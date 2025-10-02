@@ -1,31 +1,14 @@
 import numpy as np
 
 class Quaternion:
-    # --- Initializer ---
     def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, w: float = 1.0):
         self._q = np.array([x,y,z,w], dtype=np.float64)
 
     def __repr__(self):
-        # self._x 대신 self.x (property getter)를 사용합니다.
         return f"Quaternion(x={self.x:.4f}, y={self.y:.4f}, z={self.z:.4f}, w={self.w:.4f})"
-    
-    @classmethod
-    def from_axis_angle(cls, axis, angle):
-        """ 
-        축과 각도로부터 쿼터니온을 생성합니다 
-        
-        :param axis: The rotation axis (will be normalized internally).
-        :param angle: The rotation angle in radians.
-        """
-        quat = cls()
-        quat.set_rotation(axis, angle)
-        return quat
-    
-    @classmethod
-    def zero(cls):
-        return Quaternion(0,0,0,0)
 
-    # --- Property ---
+
+    # Property 
     @property
     def x(self): return self._q[0]
     @x.setter
@@ -54,7 +37,26 @@ class Quaternion:
         """
         return self._q[:3]
 
-    # --- Methods ---
+
+    # Class Method    
+    @classmethod
+    def from_axis_angle(cls, axis, angle):
+        """ 
+        축과 각도로부터 쿼터니온을 생성합니다 
+        
+        :param axis: The rotation axis (will be normalized internally).
+        :param angle: The rotation angle in radians.
+        """
+        quat = cls()
+        quat.set_rotation(axis, angle)
+        return quat
+    
+    @classmethod
+    def zero(cls):
+        return Quaternion(0,0,0,0)
+
+
+    # Instance Method
     def set_rotation(self, axis: np.ndarray, angle: float):
         # * The rotation axis must be a unit vector (magnitude of one) for the formula.
         # * Note : If you want to optimize, comment out and let your code put normalized axis 
@@ -149,7 +151,8 @@ class Quaternion:
             return angles * (180.0 / np.pi)
         
         return angles
-    
+
+
     # Operator Overload
     def __add__(self, other):
         """쿼터니언 덧셈."""
@@ -187,6 +190,7 @@ class Quaternion:
             return self * other
         else:
             return NotImplemented
+
 
     # TODO : Move below functions to appropriate places
     def to_rotation_matrix(self) -> np.ndarray:
