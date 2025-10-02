@@ -150,6 +150,7 @@ class Quaternion:
         
         return angles
     
+    # Operator Overload
     def __add__(self, other):
         """쿼터니언 덧셈."""
         if isinstance(other, Quaternion):
@@ -187,8 +188,7 @@ class Quaternion:
         else:
             return NotImplemented
 
-
-
+    # TODO : Move below functions to appropriate places
     def to_rotation_matrix(self) -> np.ndarray:
         raise DeprecationWarning("Do not use rotation matrix. use operator")
         pass 
