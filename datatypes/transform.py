@@ -72,9 +72,35 @@ class Transform:
         return p_transformed[:3]
 
     def transform_towards_origin(self, t: 'Transform') -> 'Transform':
-        # This is a simplified implementation.
-        # A proper implementation would replicate the logic from the C++ code.
-        return t * self
+        """
+        C++의 transformTowardsOrigin 로직을 복제합니다.
+        현재 변환(self)의 위치를 피벗으로 사용하여, 새로운 변환(t)을 적용합니다.
+        
+        로직 순서:
+        1. 현재 이동 성분 (T_current)을 백업합니다.
+        2. 현재 변환 행렬에서 이동 성분을 0으로 만듭니다 (순수 회전 R_current만 남김).
+        3. 새로운 변환 행렬 (t)을 R_current에 왼쪽에서 곱합니다: t * R_current
+        4. 백업했던 T_current를 결과 행렬에 다시 더합니다.
+        """
+        # 1. 현재 변환 행렬을 복사하여 새로운 Transform 객체 생성
+        result_transform = self.copy()
+
+        # 2. 현재 이동 성분 (tx, ty, tz) 백업
+        # self.matrix[:3, 3]는 translation 벡터입니다.
+        vec_t = self.matrix[:3, 3].copy() 
+
+        # 3. 결과 행렬에서 이동 성분을 0으로 설정 (순수 회전 행렬만 남김)
+        result_transform.matrix[:3, 3] = 0
+
+        # 4. 새로운 변환 t를 현재 회전 행렬에 왼쪽에서 곱함
+        # C++: thisTransform.transformation = t.transformation * thisTransform.transformation;
+        result_transform.matrix = np.dot(t.matrix, result_transform.matrix)
+
+        # 5. 백업했던 이동 성분을 결과 행렬의 이동 성분 위치에 다시 더함
+        # C++: thisTransform.transformation(x,3) += vecT[x];
+        result_transform.matrix[:3, 3] += vec_t
+
+        return result_transform
 
     def data(self) -> list[float]:
         return self.matrix.flatten().tolist()
