@@ -57,6 +57,9 @@ class Transform:
     def set_translation(self, t: np.ndarray):
         self.matrix[:3, 3] = t
 
+    def copy(self) -> 'Transform':
+        return Transform(mat=self.matrix.copy().flatten().tolist())
+
     def cumulate_with(self, t: 'Transform') -> 'Transform':
         return self * t
 
