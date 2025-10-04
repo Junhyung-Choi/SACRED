@@ -26,7 +26,6 @@ class SkeletonNode:
     @property
     def local_t_current(self):
         return self._local_t_current
-
     @local_t_current.setter
     def local_t_current(self, value):
         self._local_t_current = value
@@ -34,7 +33,6 @@ class SkeletonNode:
     @property
     def global_t_current(self):
         return self._global_t_current
-
     @global_t_current.setter
     def global_t_current(self, value):
         self._global_t_current = value
@@ -42,7 +40,6 @@ class SkeletonNode:
     @property
     def local_t_rest(self):
         return self._local_t_rest
-
     @local_t_rest.setter
     def local_t_rest(self, value):
         self._local_t_rest = value
@@ -50,7 +47,6 @@ class SkeletonNode:
     @property
     def global_t_rest(self):
         return self._global_t_rest
-
     @global_t_rest.setter
     def global_t_rest(self, value):
         self._global_t_rest = value
@@ -58,7 +54,6 @@ class SkeletonNode:
     @property
     def global_t(self):
         return self._global_t
-
     @global_t.setter
     def global_t(self, value):
         self._global_t = value
