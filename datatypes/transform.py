@@ -15,9 +15,11 @@ class Transform:
             self.matrix[:3, 1] = col2
             self.matrix[:3, 2] = col3
         else:
+            # Initalize Transform Matrix from Euler angles and translation
             self.matrix = np.identity(4)
+
+            # Calculate Rotation Matrix
             if rx != 0.0 or ry != 0.0 or rz != 0.0:
-                # Euler angles+translation
                 grad_to_rad = np.pi / 180.0
                 q_x = Quaternion.from_axis_angle(np.array([1, 0, 0]), rx * grad_to_rad)
                 q_y = Quaternion.from_axis_angle(np.array([0, 1, 0]), ry * grad_to_rad)
@@ -26,13 +28,15 @@ class Transform:
                 # Rotation Order : X -> Y -> Z
                 q_rotation = q_z * q_y * q_x 
                 self.matrix[:3, :3] = q_rotation.to_rotation_matrix()
-                
+            
+            # Add Translation
             self.matrix[0, 3] = tx
             self.matrix[1, 3] = ty
             self.matrix[2, 3] = tz
 
-    def get_translation(self) -> np.ndarray:
-        return self.matrix[:3, 3]
+    @property
+    def translation(self) -> np.ndarray:
+        return self.matrix[:3,3]
 
     def get_rotation(self) -> Quaternion:
         """4x4 변환 행렬에서 3x3 회전 행렬을 추출하여 Quaternion으로 변환합니다."""
