@@ -61,7 +61,7 @@ class Weights:
         Returns:
             list[int]: A list of handle indices with non-zero weights.
         """
-        if not (0 <= vertex_id < self.number_of_vertices):
+        if not (0 <= vertex_id < self.num_vertices):
             raise IndexError("Vertex index out of bounds.")
         return np.nonzero(self._matrix[vertex_id])[0].tolist()
     
@@ -70,12 +70,12 @@ class Weights:
         return self._matrix.shape()
 
     @property
-    def number_of_vertices(self) -> int:
+    def num_vertices(self) -> int:
         """Returns the number of vertices."""
         return self._matrix.shape[0]
 
     @property
-    def number_of_handles(self) -> int:
+    def num_handles(self) -> int:
         """Returns the number of handles."""
         return self._matrix.shape[1]
 
@@ -89,7 +89,7 @@ class Weights:
         Returns:
             Weights: A new Weights object containing the result.
         """
-        if self.number_of_handles != other.number_of_vertices:
+        if self.num_handles != other.num_vertices:
             raise ValueError(f"Incompatible shapes for multiplication: "
                              f"{self._matrix.shape} and {other._matrix.shape}")
         
