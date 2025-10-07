@@ -131,5 +131,4 @@ class Cage:
         interpolated_keyframe = (keyframe_low_np * (1.0 - a)) + (keyframe_top_np * a)
         
         # Rest Pose = Original Rest Pose + Interpolated Keyframe
-        new_rest_vertices = original_vertices + interpolated_keyframe        
-        self.rest_pose_vertices = new_rest_vertices.tolist()
+        self.rest_pose_vertices = (original_vertices + interpolated_keyframe).tolist()
