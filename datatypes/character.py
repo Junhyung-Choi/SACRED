@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List, Union
 from .trimesh import Trimesh
 
 class Character(Trimesh):
@@ -36,7 +37,7 @@ class Character(Trimesh):
         return self._rest_pose_vertices
 
     @rest_pose_vertices.setter
-    def rest_pose_vertices(self, vertices: list[float] | np.ndarray):
+    def rest_pose_vertices(self, vertices: Union[List[float], np.ndarray]):
         self._rest_pose_vertices = np.array(vertices, dtype=np.float64)
 
     def get_rest_pose_vertex(self, v_id: int) -> np.ndarray:

@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List, Union
 from scipy.sparse import csr_matrix, kron
 
 class Weights:
@@ -53,7 +54,7 @@ class Weights:
         """Returns the entire weight matrix as a numpy array."""
         return self._matrix
 
-    def get_non_zeros(self, vertex_id: int) -> list[int]:
+    def get_non_zeros(self, vertex_id: int) -> List[int]:
         """
         Gets the indices of handles with non-zero weights for a given vertex.
         Args:
@@ -98,7 +99,7 @@ class Weights:
         result._matrix = result_matrix
         return result
 
-    def to_sparse(self, rows_indices: list[int] | None = None) -> csr_matrix:
+    def to_sparse(self, rows_indices: Union[List[int], None] = None) -> csr_matrix:
         """
         Exports the weights to a SciPy sparse matrix (CSR format).
         Original C++ Method : exportWeightsToEigen
@@ -112,7 +113,7 @@ class Weights:
             return csr_matrix(self._matrix[rows_indices, :])
         return csr_matrix(self._matrix)
 
-    def identity_kronecker_product(self, rows_indices: list[int] | None = None) -> csr_matrix:
+    def identity_kronecker_product(self, rows_indices: Union[List[int], None] = None) -> csr_matrix:
         """
         Computes the Kronecker product of the weights matrix with a 3x3 identity matrix.
         This is useful for applying transformations to 3D vertices.

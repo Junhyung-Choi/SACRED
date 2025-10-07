@@ -1,9 +1,10 @@
 import numpy as np
+from typing import List
 from scipy.spatial.transform import Rotation as R
 from .quaternion import Quaternion
 
 class Transform:
-    def __init__(self, tx: float = 0.0, ty: float = 0.0, tz: float = 0.0, rx: float = 0.0, ry: float = 0.0, rz: float = 0.0, mat: list[float] = None, quat: Quaternion = None, col1: np.ndarray = None, col2: np.ndarray = None, col3: np.ndarray = None):
+    def __init__(self, tx: float = 0.0, ty: float = 0.0, tz: float = 0.0, rx: float = 0.0, ry: float = 0.0, rz: float = 0.0, mat: List[float] = None, quat: Quaternion = None, col1: np.ndarray = None, col2: np.ndarray = None, col3: np.ndarray = None):
         if mat is not None:
             self.matrix = np.array(mat).reshape((4, 4))
         elif quat is not None:
@@ -102,7 +103,7 @@ class Transform:
 
         return result_transform
 
-    def data(self) -> list[float]:
+    def data(self) -> List[float]:
         return self.matrix.flatten().tolist()
 
     def __add__(self, other: 'Transform') -> 'Transform':
