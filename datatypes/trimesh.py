@@ -68,12 +68,12 @@ class Trimesh:
         # TODO: C++ 주석에 따라, set 후 init() 호출 여부를 결정해야 함.
         
     @property
-    def tris(self) -> np.ndarray:
+    def triangles(self) -> np.ndarray:
         """getTrianglesVector()"""
         return self._tris
     
-    @tris.setter
-    def tris(self, _tris: List[int]):
+    @triangles.setter
+    def triangles(self, _tris: List[int]):
         """setTrianglesVector()"""
         # C++: setTrianglesVector(const std::vector<int> & _tris)
         self._tris = np.array(_tris, dtype=np.int32)
