@@ -10,7 +10,7 @@ def unique_edge(v1: int, v2: int) -> Edge:
     return tuple(sorted((v1, v2)))
 
 class Trimesh:
-    def __init__(self, _vertices: List[float] = None, _tris: List[int] = None):
+    def __init__(self, _vertices: np.ndarray = None, _tris: np.ndarray = None):
         # C++ protected 멤버 변수
         self._vertices: np.ndarray = np.array([], dtype=np.float64)  # vertices
         self._tris: np.ndarray = np.array([], dtype=np.int32)        # tris
@@ -18,9 +18,9 @@ class Trimesh:
         self._tris_norm: np.ndarray = np.array([], dtype=np.float64)     # trisNorm
         
         # 인접 정보 (C++: std::vector<std::vector<int>>)
-        self._v2t: List[List[int]] = [] # _v2t (Vertex to Triangles)
-        self._v2v: List[List[int]] = [] # _v2v (Vertex to Vertices)
-        self._t2t: List[List[int]] = [] # _t2t (Triangle to Triangles)
+        self._v2t: List[np.ndarray] = [] # _v2t (Vertex to Triangles)
+        self._v2v: List[np.ndarray] = [] # _v2v (Vertex to Vertices)
+        self._t2t: List[np.ndarray] = [] # _t2t (Triangle to Triangles)
         
         self.bounding_box: BoundingBox = BoundingBox() # boundingBox
 
@@ -42,11 +42,11 @@ class Trimesh:
         self._t2t.clear()
         self.bounding_box.clear()
 
-    def create(self, _vertices: List[float], _tris: List[int]) -> bool:
+    def create(self, _vertices: np.ndarray, _tris: np.ndarray) -> bool:
         self.clear()
         
-        self._vertices = np.array(_vertices, dtype=np.float64)
-        self._tris = np.array(_tris, dtype=np.int32)
+        self._vertices = _vertices
+        self._tris = _tris
         
         self._init()
         
@@ -61,10 +61,10 @@ class Trimesh:
         return self._vertices
     
     @vertices.setter
-    def vertices(self, _vertices: List[float]):
+    def vertices(self, _vertices: np.ndarray):
         """setVerticesVector()"""
         # C++: setVerticesVector(const std::vector<double> & _vertices)
-        self._vertices = np.array(_vertices, dtype=np.float64)
+        self._vertices = _vertices
         # TODO: C++ 주석에 따라, set 후 init() 호출 여부를 결정해야 함.
         
     @property
@@ -73,10 +73,10 @@ class Trimesh:
         return self._tris
     
     @triangles.setter
-    def triangles(self, _tris: List[int]):
+    def triangles(self, _tris: np.ndarray):
         """setTrianglesVector()"""
         # C++: setTrianglesVector(const std::vector<int> & _tris)
-        self._tris = np.array(_tris, dtype=np.int32)
+        self._tris = _tris
         # TODO: C++ 주석에 따라, set 후 init() 호출 여부를 결정해야 함.
 
     @property
@@ -89,15 +89,15 @@ class Trimesh:
         """getNumTriangles()"""
         return len(self._tris) // 3
 
-    def v2t(self, v_id: int) -> List[int]:
+    def v2t(self, v_id: int) -> np.ndarray:
         """v2t(unsigned long vId)"""
         return self._v2t[v_id]
         
-    def v2v(self, v_id: int) -> List[int]:
+    def v2v(self, v_id: int) -> np.ndarray:
         """v2v(unsigned long vId)"""
         return self._v2v[v_id]
         
-    def t2t(self, t_id: int) -> List[int]:
+    def t2t(self, t_id: int) -> np.ndarray:
         """t2t(unsigned long tId)"""
         return self._t2t[t_id]
         
@@ -197,6 +197,10 @@ class Trimesh:
             self._v2v[e[0]].append(e[1])
             self._v2v[e[1]].append(e[0])
 
+        self._v2t = [np.array(l, dtype=np.int32) for l in self._v2t]
+        self._v2v = [np.array(l, dtype=np.int32) for l in self._v2v]
+        self._t2t = [np.array(l, dtype=np.int32) for l in self._t2t]
+
     def _update_tris_normals(self):
         """updateTrisNormals() - NumPy 벡터화 연산 대신 C++의 OMP 루프 로직을 유지"""
         
@@ -246,29 +250,22 @@ class Trimesh:
         
         self._vertices_norm = np.zeros(num_vertices * 3, dtype=np.float64)
         
+        tris_norm_reshaped = self._tris_norm.reshape(-1, 3)
         # C++의 for 루프 로직을 유지하면서 NumPy를 사용하여 연산 속도를 높임
         for v_id in range(num_vertices):
             # v2t(vId)로 인접 삼각형 인덱스 가져오기
             neigh_t_ids = self.v2t(v_id) 
 
-            if not neigh_t_ids:
+            if neigh_t_ids.size == 0:
                 # 인접 삼각형이 없으면 건너뜁니다.
                 continue
 
             # 인접 삼각형의 노멀을 추출 (Fancy Indexing)
             # 노멀은 self._tris_norm에 3개 좌표 단위로 저장되어 있음
-            neigh_norm_indices = np.array(neigh_t_ids) * 3
-            
-            # 인접 노멀 벡터 (N, 3)
-            # 여기서는 C++의 sumx, sumy, sumz 계산을 위해 배열 슬라이싱을 사용해야 함
-            
-            sum_norm = np.zeros(3)
-            for t_id in neigh_t_ids:
-                t_id_ptr = t_id * 3
-                sum_norm += self._tris_norm[t_id_ptr : t_id_ptr + 3]
+            sum_norm = np.sum(tris_norm_reshaped[neigh_t_ids], axis=0)
             
             # 평균 계산
-            sum_norm /= len(neigh_t_ids)
+            sum_norm /= neigh_t_ids.shape[0]
             
             # 정규화 (Normalization)
             length_sum = np.linalg.norm(sum_norm)
@@ -294,9 +291,9 @@ class Trimesh:
         new_mesh._tris_norm = self._tris_norm.copy()
         
         # 인접 정보도 깊은 복사
-        new_mesh._v2t = [list(l) for l in self._v2t]
-        new_mesh._v2v = [list(l) for l in self._v2v]
-        new_mesh._t2t = [list(l) for l in self._t2t]
+        new_mesh._v2t = [arr.copy() for arr in self._v2t]
+        new_mesh._v2v = [arr.copy() for arr in self._v2v]
+        new_mesh._t2t = [arr.copy() for arr in self._t2t]
         
         # BoundingBox 복사 (BoundingBox에 copy()가 있다면 더 좋음, 없으면 재계산 필요)
         new_mesh.bounding_box = BoundingBox() 

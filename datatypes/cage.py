@@ -1,9 +1,9 @@
 import numpy as np
-from typing import List, Union
+from typing import Union
 from .trimesh import Trimesh
 
 class Cage:
-    def __init__(self, vertices: List[float] = None, tris: List[int] = None):
+    def __init__(self, vertices: np.ndarray = None, tris: np.ndarray = None):
         # C++ 원본의 protected 멤버 변수들
         self._original_rest_pose: Trimesh = Trimesh()
         self._rest_pose: Trimesh = Trimesh()
@@ -15,7 +15,7 @@ class Cage:
         if vertices is not None and tris is not None:
             self.create(vertices, tris)
 
-    def create(self, vertices: List[float], tris: List[int]) -> bool:
+    def create(self, vertices: np.ndarray, tris: np.ndarray) -> bool:
         self.clear()
         
         self._original_rest_pose.create(vertices, tris)
@@ -59,10 +59,10 @@ class Cage:
 
     # Current Pose
     @property
-    def current_pose_vertices(self) -> List[float]:
+    def current_pose_vertices(self) -> np.ndarray:
         return self._current_pose.vertices
     @current_pose_vertices.setter
-    def current_pose_vertices(self, vertices: List[float]):
+    def current_pose_vertices(self, vertices: np.ndarray):
         self._current_pose.vertices = vertices
         self.on_current_pose_vertices_updated()
 
@@ -74,10 +74,10 @@ class Cage:
 
     # Rest Pose
     @property
-    def rest_pose_vertices(self) -> List[float]:
+    def rest_pose_vertices(self) -> np.ndarray:
         return self._rest_pose.vertices
     @rest_pose_vertices.setter
-    def rest_pose_vertices(self, vertices: List[float]):
+    def rest_pose_vertices(self, vertices: np.ndarray):
         self._rest_pose.vertices = vertices
 
     def get_rest_pose_vertex(self, v_id: int) -> np.ndarray:
@@ -88,17 +88,17 @@ class Cage:
 
     # Original Rest Pose
     @property
-    def original_rest_pose_vertices(self) -> List[float]:
+    def original_rest_pose_vertices(self) -> np.ndarray:
         return self._original_rest_pose.vertices
 
     @property
-    def original_rest_pose_triangles(self) -> List[int]:
+    def original_rest_pose_triangles(self) -> np.ndarray:
         #! C++ 원본은 currentPose의 트라이앵글을 반환했지만, 
         #! 이는 원본 포즈의 트라이앵글을 반환하는 것이 논리적이므로 수정합니다.
         return self._original_rest_pose.triangles
     
     @property
-    def current_pose_triangles(self) -> List[int]:
+    def current_pose_triangles(self) -> np.ndarray:
         """
         NOTE: original_rest_pose_triangles를 사용하는 구간인
               MVC 코드가 의도한 대로 동작하지 않는다면 이 프로퍼티를 대신해서
@@ -111,29 +111,26 @@ class Cage:
     def last_translations(self) -> np.ndarray:
         return self._last_translations
 
-    def set_keyframe(self, keyframe: List[float]):
+    def set_keyframe(self, keyframe: np.ndarray):
         """
         C++ 로직: keyframe(변위 벡터)을 Original Rest Pose에 더하여 Rest Pose를 설정합니다.
         """
-        original_vertices = np.array(self.original_rest_pose_vertices)
-        keyframe_np = np.array(keyframe)
+        original_vertices = self.original_rest_pose_vertices
         
         # Rest Pose = Original Rest Pose + Keyframe (Displacement)
-        new_rest_vertices = original_vertices + keyframe_np
+        new_rest_vertices = original_vertices + keyframe
         
-        self.rest_pose_vertices = new_rest_vertices.tolist()
+        self.rest_pose_vertices = new_rest_vertices
 
 
-    def interpolate_keyframes(self, keyframe_low: List[float], keyframe_top: List[float], a: float):
+    def interpolate_keyframes(self, keyframe_low: np.ndarray, keyframe_top: np.ndarray, a: float):
         """
         C++ 로직: 두 키프레임(변위 벡터)을 보간하여 Original Rest Pose에 더해 Rest Pose를 설정합니다.
         """
-        original_vertices = np.array(self.original_rest_pose_vertices)
-        keyframe_low_np = np.array(keyframe_low)
-        keyframe_top_np = np.array(keyframe_top)
+        original_vertices = self.original_rest_pose_vertices
         
         # Interpolated Keyframe = (Low * (1.0-a)) + (Top * a)
-        interpolated_keyframe = (keyframe_low_np * (1.0 - a)) + (keyframe_top_np * a)
+        interpolated_keyframe = (keyframe_low * (1.0 - a)) + (keyframe_top * a)
         
         # Rest Pose = Original Rest Pose + Interpolated Keyframe
-        self.rest_pose_vertices = (original_vertices + interpolated_keyframe).tolist()
+        self.rest_pose_vertices = original_vertices + interpolated_keyframe
