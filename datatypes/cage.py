@@ -1,8 +1,9 @@
 import numpy as np
+from typing import List, Union
 from .trimesh import Trimesh
 
 class Cage:
-    def __init__(self, vertices: list[float] = None, tris: list[int] = None):
+    def __init__(self, vertices: List[float] = None, tris: List[int] = None):
         # C++ 원본의 protected 멤버 변수들
         self._original_rest_pose: Trimesh = Trimesh()
         self._rest_pose: Trimesh = Trimesh()
@@ -14,7 +15,7 @@ class Cage:
         if vertices is not None and tris is not None:
             self.create(vertices, tris)
 
-    def create(self, vertices: list[float], tris: list[int]) -> bool:
+    def create(self, vertices: List[float], tris: List[int]) -> bool:
         self.clear()
         
         self._original_rest_pose.create(vertices, tris)
@@ -55,10 +56,10 @@ class Cage:
 
     # Current Pose
     @property
-    def current_pose_vertices(self) -> list[float]:
+    def current_pose_vertices(self) -> List[float]:
         return self._current_pose.vertices
     @current_pose_vertices.setter
-    def current_pose_vertices(self, vertices: list[float]):
+    def current_pose_vertices(self, vertices: List[float]):
         self._current_pose.vertices = vertices
 
     def get_current_pose_vertex(self, v_id: int) -> np.ndarray:
@@ -69,10 +70,10 @@ class Cage:
 
     # Rest Pose
     @property
-    def rest_pose_vertices(self) -> list[float]:
+    def rest_pose_vertices(self) -> List[float]:
         return self._rest_pose.vertices
     @rest_pose_vertices.setter
-    def rest_pose_vertices(self, vertices: list[float]):
+    def rest_pose_vertices(self, vertices: List[float]):
         self._rest_pose.vertices = vertices
 
     def get_rest_pose_vertex(self, v_id: int) -> np.ndarray:
@@ -83,17 +84,17 @@ class Cage:
 
     # Original Rest Pose
     @property
-    def original_rest_pose_vertices(self) -> list[float]:
+    def original_rest_pose_vertices(self) -> List[float]:
         return self._original_rest_pose.vertices
 
     @property
-    def original_rest_pose_triangles(self) -> list[int]:
+    def original_rest_pose_triangles(self) -> List[int]:
         #! C++ 원본은 currentPose의 트라이앵글을 반환했지만, 
         #! 이는 원본 포즈의 트라이앵글을 반환하는 것이 논리적이므로 수정합니다.
         return self._original_rest_pose.triangles
     
     @property
-    def current_pose_triangles(self) -> list[int]:
+    def current_pose_triangles(self) -> List[int]:
         """
         NOTE: original_rest_pose_triangles를 사용하는 구간인
               MVC 코드가 의도한 대로 동작하지 않는다면 이 프로퍼티를 대신해서
@@ -106,7 +107,7 @@ class Cage:
     def last_translations(self) -> np.ndarray:
         return self._last_translations
 
-    def set_keyframe(self, keyframe: list[float]):
+    def set_keyframe(self, keyframe: List[float]):
         """
         C++ 로직: keyframe(변위 벡터)을 Original Rest Pose에 더하여 Rest Pose를 설정합니다.
         """
@@ -119,7 +120,7 @@ class Cage:
         self.rest_pose_vertices = new_rest_vertices.tolist()
 
 
-    def interpolate_keyframes(self, keyframe_low: list[float], keyframe_top: list[float], a: float):
+    def interpolate_keyframes(self, keyframe_low: List[float], keyframe_top: List[float], a: float):
         """
         C++ 로직: 두 키프레임(변위 벡터)을 보간하여 Original Rest Pose에 더해 Rest Pose를 설정합니다.
         """

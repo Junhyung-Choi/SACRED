@@ -1,13 +1,14 @@
 import numpy as np
+from typing import List, Union
 from .skeleton_node import SkeletonNode
 from .transform import Transform
 from .bbox import BoundingBox
 
 class Skeleton:
-    def __init__(self, joints: list[np.ndarray] = None, joints_rotations: list[np.ndarray] = None, 
-                 fathers: list[int] = None, names: list[str] = None):
-        self._root_indexes: list[int] = []
-        self._nodes: list['SkeletonNode'] = []
+    def __init__(self, joints: List[np.ndarray] = None, joints_rotations: List[np.ndarray] = None, 
+                 fathers: List[int] = None, names: List[str] = None):
+        self._root_indexes: List[int] = []
+        self._nodes: List['SkeletonNode'] = []
         self.bounding_box: BoundingBox = BoundingBox()
         self._root_motion: 'Transform' = Transform() # Transform 객체로 초기화
 
@@ -16,11 +17,11 @@ class Skeleton:
 
     # * Properties 
     @property
-    def root_indexes(self) -> list[int]:
+    def root_indexes(self) -> List[int]:
         return self._root_indexes
 
     @property
-    def nodes(self) -> list['SkeletonNode']:
+    def nodes(self) -> List['SkeletonNode']:
         return self._nodes
     
     @property
@@ -31,7 +32,7 @@ class Skeleton:
     def num_nodes(self):
         return len(self._nodes)
 
-    def __getitem__(self, index: int | slice) -> 'SkeletonNode' | list['SkeletonNode']:
+    def __getitem__(self, index: Union[int, slice]) -> Union['SkeletonNode', List['SkeletonNode']]:
         """
         C++의 getNode(ulong index)에 대응하며, 인덱스 또는 슬라이스 접근을 지원합니다.
         """
@@ -49,8 +50,8 @@ class Skeleton:
         
     # * Constructor
 
-    def create(self, joints: list[np.ndarray], joints_rotations: list[np.ndarray], 
-               fathers: list[int], names: list[str]) -> bool:
+    def create(self, joints: List[np.ndarray], joints_rotations: List[np.ndarray], 
+               fathers: List[int], names: List[str]) -> bool:
         self.clear()
 
         for i in range(len(joints)):
@@ -187,7 +188,7 @@ class Skeleton:
 
     # --- Animation/Keyframe Methods ---
 
-    def set_keyframe(self, keyframe: list['Transform']):
+    def set_keyframe(self, keyframe: List['Transform']):
         """
         C++ 코드에서 rootMotion은 반복분 내내 덮어씌워지고
         root_index가 여러개인 상황을 고려하지 않기 때문에
@@ -207,7 +208,7 @@ class Skeleton:
             
             self._root_motion.set_translation(t)
 
-    def interpolate_keyframes(self, keyframe_low: list['Transform'], keyframe_top: list['Transform'], a: float):
+    def interpolate_keyframes(self, keyframe_low: List['Transform'], keyframe_top: List['Transform'], a: float):
         """
         C++ 코드에서 rootMotion은 반복분 내내 덮어씌워지고
         root_index가 여러개인 상황을 고려하지 않기 때문에

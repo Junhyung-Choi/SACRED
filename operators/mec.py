@@ -1,5 +1,7 @@
 import numpy as np
+from typing import Tuple
 from dataclasses import dataclass
+
 
 @dataclass
 class MecStats:
@@ -16,7 +18,7 @@ def compute_mec_coordinates(
     max_dw: float = 0.001,
     epsilon_termination: float = 1e-7,
     error_triggering_line_search: float = 1e-4
-) -> tuple[np.ndarray, MecStats]:
+) -> Tuple[np.ndarray, MecStats]:
     """
     임의의 폴리토프에 대한 최대 엔트로피 좌표(Maximum Entropy Coordinates)를 계산합니다.
 

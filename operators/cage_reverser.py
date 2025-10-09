@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.sparse import lil_matrix, csc_matrix, eye, kron
 from scipy.sparse.linalg import inv, lsqr
+from typing import List, Union
 
 from ..datatypes.character import Character
 from ..datatypes.cage import Cage
@@ -17,24 +18,24 @@ class CageReverser:
     C++ 원본: `SuperCages/operators/cageReverser.cpp`
     """
     def __init__(self):
-        self.character: Character | None = None
-        self.cage: Cage | None = None
-        self.skel: Skeleton | None = None
-        self.psi: Weights | None = None   # ψ (skeleton updater weights)
-        self.phi: Weights | None = None   # φ (cage weights)
-        self.omega: Weights | None = None # ω (skeleton weights)
-        self.selected_vertices_for_inversion: list[int] | None = None
+        self.character: Union[Character, None] = None
+        self.cage: Union[Cage, None] = None
+        self.skel: Union[Skeleton, None] = None
+        self.psi: Union[Weights, None] = None   # ψ (skeleton updater weights)
+        self.phi: Union[Weights, None] = None   # φ (cage weights)
+        self.omega: Union[Weights, None] = None # ω (skeleton weights)
+        self.selected_vertices_for_inversion: Union[List[int], None] = None
         self.refresh_matrices: bool = True
 
         # Sparse Matrices (SciPy)
-        self.PSI: csc_matrix | None = None
-        self.PHI: csc_matrix | None = None
-        self.PHI_transpose: csc_matrix | None = None
-        self.OMEGA: csc_matrix | None = None
-        self.Ar: csc_matrix | None = None
-        self.B_topo_inverse: csc_matrix | None = None
-        self.R: csc_matrix | None = None
-        self.A: csc_matrix | None = None
+        self.PSI: Union[csc_matrix, None] = None
+        self.PHI: Union[csc_matrix, None] = None
+        self.PHI_transpose: Union[csc_matrix, None] = None
+        self.OMEGA: Union[csc_matrix, None] = None
+        self.Ar: Union[csc_matrix, None] = None
+        self.B_topo_inverse: Union[csc_matrix, None] = None
+        self.R: Union[csc_matrix, None] = None
+        self.A: Union[csc_matrix, None] = None
 
     def create(
         self,
@@ -44,7 +45,7 @@ class CageReverser:
         psi: Weights,
         phi: Weights,
         omega: Weights,
-        selected_vertices: list[int] | None = None
+        selected_vertices: Union[List[int], None] = None
     ) -> bool:
         self.character = character
         self.cage = cage

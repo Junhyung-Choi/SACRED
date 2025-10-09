@@ -1,6 +1,6 @@
 import numpy as np
 
-from typing import List
+from typing import List, Union
 
 from ..datatypes.weights import Weights
 from ..datatypes.character import Character
@@ -16,10 +16,10 @@ class CageUpdater:
     C++ 원본: `SuperCages/operators/cageUpdater.cpp`
     """
     def __init__(self):
-        self.w_cage: Weights | None = None
-        self.character: Character | None = None
-        self.cage: Cage | None = None
-        self.selected_vertices: List[int] | None = None
+        self.w_cage: Union[Weights, None] = None
+        self.character: Union[Character , None] = None
+        self.cage: Union[Cage,None] = None
+        self.selected_vertices: Union[List[int] ,None] = None
         self.clear()
 
     def create(
@@ -27,7 +27,7 @@ class CageUpdater:
         w_cage: Weights,
         character: Character,
         cage: Cage,
-        selected_vertices: List[int] | None = None
+        selected_vertices: Union[List[int] , None] = None
     ) -> bool:
         """
         CageUpdater를 초기화합니다.
