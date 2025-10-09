@@ -44,6 +44,9 @@ class Cage:
         self._last_translations = np.array([], dtype=np.float64)
         # NOTE: C++ 원본은 clear() 후 Trimesh 객체 자체를 재할당하지 않고 내부 데이터만 비웁니다.
 
+    def on_current_pose_vertices_updated(self):
+        pass
+
     # --- Accessors (C++ Getters/Setters) ---
     
     @property
@@ -61,6 +64,7 @@ class Cage:
     @current_pose_vertices.setter
     def current_pose_vertices(self, vertices: List[float]):
         self._current_pose.vertices = vertices
+        self.on_current_pose_vertices_updated()
 
     def get_current_pose_vertex(self, v_id: int) -> np.ndarray:
         return self._current_pose.get_vertex(v_id)
