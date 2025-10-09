@@ -3,7 +3,7 @@ from typing import List, Union
 from scipy.sparse import csr_matrix, kron
 
 class Weights:
-    def __init__(self, vertex_number: int = 0, handle_number: int = 0):
+    def __init__(self, vertex_number: int = 0, handle_number: int = 0, data : np.ndarray = None):
         """
         Initializes a Weights object that behaves like a NumPy array.
         This class stores a matrix of weights, typically for skinning, where each row corresponds to a vertex
@@ -15,18 +15,39 @@ class Weights:
         Args:
             vertex_number (int): The number of vertices.
             handle_number (int): The number of handles.
+            data (np.ndarray, optional) : A Numpy array to initialize the weights with.
+                                          If provided, vertex number and handle number are ignored.
         """
         self._matrix: np.ndarray = np.zeros((0, 0))
-        self.create(vertex_number=vertex_number, handle_number=handle_number)
+        self.create(vertex_number=vertex_number, handle_number=handle_number, data=data)
 
-    def create(self, vertex_number: int = 0, handle_number: int = 0):
+    @classmethod
+    def from_ndarray(cls, data: np.ndarray) -> 'Weights':
+        """
+        Create a Weights object directly from a Numpy Array.
+        """
+        if not isinstance(data, np.ndarray) or data.ndim != 2:
+            raise ValueError("Input data must be a 2D NumPy array.")
+
+        rows, cols = data.shape
+        weights_obj = cls(rows,cols)
+        weights_obj._matrix = data.copy() # Use a copy to prevent external modifications
+        return weights_obj
+
+
+    def create(self, vertex_number: int = 0, handle_number: int = 0, data:np.ndarray=None):
         """
         Resizes the weights matrix, initializing all weights to zero.
         Args:
             vertex_number (int): The new number of vertices.
             handle_number (int): The new number of handles.
         """
-        self._matrix = np.zeros((vertex_number, handle_number))
+        if data is not None:
+            if not isinstance(data, np.ndarray) or data.ndim != 2:
+                raise ValueError("Input data must be a 2D NumPy array.")
+            self._matrix = data.copy()
+        else:
+            self._matrix = np.zeros((vertex_number, handle_number))
 
     def clear(self):
         """Clears all weights and resets the matrix to 0x0."""
