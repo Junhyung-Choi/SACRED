@@ -36,8 +36,8 @@ class CageUpdater:
             w_cage (Weights): 케이지 가중치 (캐릭터 정점을 케이지 정점의 선형 결합으로 표현).
             character (Character): 캐릭터 객체.
             cage (Cage): 케이지 객체.
-            selected_vertices (List[int] | None): 계산에 사용할 특정 캐릭터 정점의 인덱스 리스트.
-                                                   None이면 모든 정점을 사용합니다.
+            selected_vertices (List[int] | None): 계산에 사용할 특정 캐릭터 정점의 인덱스 리스트. (MaxVol Selected Index List)
+                                                   None이면 모든 정점을 사용합니다. 
         """
         self.clear()
 
