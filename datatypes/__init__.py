@@ -8,4 +8,4 @@ from .transform import Transform
 from .trimesh import Trimesh
 from .weights import Weights
 
-__all__ = [BoundingBox, Cage, Character, Quaternion, SkeletonNode, Skeleton, Transform, Trimesh, Weights]
+__all__ = ['BoundingBox', 'Cage', 'Character', 'Quaternion', 'SkeletonNode', 'Skeleton', 'Transform', 'Trimesh', 'Weights']
