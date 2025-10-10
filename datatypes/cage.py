@@ -3,11 +3,12 @@ from typing import Union
 from .trimesh import Trimesh
 
 class Cage:
-    def __init__(self, vertices: np.ndarray = None, tris: np.ndarray = None):
+    def __init__(self, vertices: np.ndarray = None, tris: np.ndarray = None, render_object = None):
         # C++ 원본의 protected 멤버 변수들
         self._original_rest_pose: Trimesh = Trimesh()
         self._rest_pose: Trimesh = Trimesh()
         self._current_pose: Trimesh = Trimesh()
+        self._render_object = render_object
         
         # lastTranslations는 C++ 구현에 따라 빈 리스트로 초기화 후 init()에서 크기 조정
         self._last_translations: np.ndarray = np.array([], dtype=np.float64)
@@ -45,6 +46,7 @@ class Cage:
         # NOTE: C++ 원본은 clear() 후 Trimesh 객체 자체를 재할당하지 않고 내부 데이터만 비웁니다.
 
     def on_current_pose_vertices_updated(self):
+        self._render_object._vao.set_vertex_position_batch(self.current_pose_vertices)
         pass
 
     # --- Accessors (C++ Getters/Setters) ---
