@@ -61,30 +61,43 @@ class CageUpdater:
         """
         if not all([self.character, self.cage, self.w_cage]):
             return
+        
+        print(self.cage.current_pose_vertices.shape)
 
         num_cage_vertices = self.cage.num_vertices
         
-        # W_cage: (num_cage_vertices, num_char_vertices)
-        # NumPy lstsq는 (M, N) 형태의 행렬을 기대하므로 전치(transpose)
-        # A (M, N) @ x (N) = b (M)
-        # W_cage.T (num_char_vertices, num_cage_vertices) @ C' (num_cage_vertices) = V' (num_char_vertices)
-        W_T = self.w_cage.weights.T
+        # W_cage: (num_source_vertices, num_cage_vertices)
+        # A (M, N) @ x (N, K) = b (M, K)
+        # W_cage (num_source_vertices, num_cage_vertices) @ C' (num_cage_vertices, 3) = V' (num_source_vertices, 3)
+        # np.linalg.lstsq(A, b) -> A: (M, N), b: (M, K)
+        W = self.w_cage.matrix # W_cage는 (num_source_vertices, num_cage_vertices) 형태
+        # print(f"DEBUG: W shape (initial): {W.shape}")
+        # print(f"DEBUG: W sum (initial): {np.sum(W)}")
 
         # 1. 변형된 캐릭터 정점(V') 가져오기
-        V_prime = self.character.current_pose_vertices.reshape(-1, 3)
+        V_prime = self.character.vertices.reshape(-1, 3) # (num_source_vertices, 3)
+        # print(f"DEBUG: V_prime shape (initial): {V_prime.shape}")
+        # print(f"DEBUG: V_prime sum (initial): {np.sum(V_prime)}")
 
         # 2. 선택된 정점이 있는 경우, 가중치 행렬과 정점 벡터를 필터링
         if self.selected_vertices and len(self.selected_vertices) > 0:
-            W_T = W_T[self.selected_vertices, :]
+            W = W[self.selected_vertices, :]
             V_prime = V_prime[self.selected_vertices, :]
+            # print(f"DEBUG: W shape (after filtering): {W.shape}")
+            # print(f"DEBUG: V_prime shape (after filtering): {V_prime.shape}")
+            # print(f"DEBUG: W sum (after filtering): {np.sum(W)}")
+            # print(f"DEBUG: V_prime sum (after filtering): {np.sum(V_prime)}")
 
-        # 3. 각 좌표(x, y, z)에 대해 최소제곱법 시스템 풀기
-        new_cage_x = np.linalg.lstsq(W_T, V_prime[:, 0], rcond=None)[0]
-        new_cage_y = np.linalg.lstsq(W_T, V_prime[:, 1], rcond=None)[0]
-        new_cage_z = np.linalg.lstsq(W_T, V_prime[:, 2], rcond=None)[0]
 
-        # 4. 계산된 좌표를 합쳐 새로운 케이지 정점 위치(C') 생성
-        C_prime = np.stack([new_cage_x, new_cage_y, new_cage_z], axis=1)
+        # 3. 최소제곱법 시스템 풀기
+        # A = W (필터링된 num_source_vertices, num_cage_vertices)
+        # b = V_prime (필터링된 num_source_vertices, 3)
+        # x = C_prime (num_cage_vertices, 3)
+        C_prime, residuals, rank, s = np.linalg.lstsq(W, V_prime, rcond=None)
+        # print(f"DEBUG: C_prime shape: {C_prime.shape}")
+        # print(f"DEBUG: C_prime sum: {np.sum(C_prime)}")
 
+        # 4. 계산된 좌표를 합쳐 새로운 케이지 정점 위치(C') 생성 (C_prime에 이미 (num_cage_vertices, 3) 형태로 계산됨)
+        # new_cage_x, new_cage_y, new_cage_z를 개별적으로 계산할 필요 없음
         # 5. 케이지의 현재 포즈 업데이트
         self.cage.current_pose_vertices = C_prime.flatten()
