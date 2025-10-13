@@ -52,8 +52,8 @@ class SkeletonNode:
         self._global_t_rest = value
 
     @property
-    def global_t(self):
+    def global_t_offset(self):
         return self._global_t
-    @global_t.setter
-    def global_t(self, value):
+    @global_t_offset.setter
+    def global_t_offset(self, value):
         self._global_t = value

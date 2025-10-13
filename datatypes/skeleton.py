@@ -184,7 +184,7 @@ class Skeleton:
         -> Transform(변화량) = Current Pose * Rest Pose^(-1)
         """
         for node in self.nodes:
-            node.global_t = node.global_t_current * node.global_t_rest.inverse()
+            node.global_t_offset = node.global_t_current * node.global_t_rest.inverse()
 
     # --- Animation/Keyframe Methods ---
 
