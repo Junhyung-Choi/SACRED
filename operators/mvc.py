@@ -102,6 +102,11 @@ def compute_mvc_weight_matrix(src_vertices, cage_vertices, cage_triangles, eps=1
     iterative code would `break` after finding the first face, but a true vectorized 
     equivalent is extremely complex. This version handles it more robustly but does not 
     replicate the `break` logic.
+
+    Param:
+    - src_vertices : (V, 3) --> [(v_x, v_y, v_z), ...]
+    - cage_vertices : (N_cv, 3) --> [(v_x, v_y, v_z), ...]
+    - cage_triangles : (N_cf, 3) -->  [(fv_i, fv_i+1, fv_i+2), ...] #fv: face_vertex
     """
     V = src_vertices.shape[0]
     Nc = cage_vertices.shape[0]
