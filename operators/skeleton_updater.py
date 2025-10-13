@@ -4,7 +4,7 @@ from ..datatypes.character import Character
 from ..datatypes.skeleton import Skeleton
 from ..datatypes.cage import Cage
 
-from .mvc import compute_mvc_coordinates_3d
+from .mvc import compute_mvc_coordinates_3d, compute_mvc_weight_matrix
 from .mec import compute_mec_coordinates
 
 class SkeletonUpdater:
@@ -29,6 +29,11 @@ class SkeletonUpdater:
         self.clear()
 
     def create(self, w_skeleton: Weights, w_cage: Weights, character: Character, skeleton: Skeleton, cage: Cage) -> bool:
+        """
+        Param:
+        - w_skeleton #(N_Bone, N_CharV)
+        """
+
         self.clear()
 
         self.w_skel = w_skeleton
@@ -44,7 +49,7 @@ class SkeletonUpdater:
         num_nodes = skeleton.num_nodes
         self.original_node_positions = np.zeros((num_nodes, 3), dtype=np.float64)
         for i in range(num_nodes):
-            self.original_node_positions[i] = skeleton.get_node(i).local_t_current.translation
+            self.original_node_positions[i] = skeleton[i].local_t_current.translation
 
         return True
 
@@ -64,50 +69,57 @@ class SkeletonUpdater:
         """
         스켈레톤-케이지 결합을 위한 가중치(Skeleton Updater Weights)를 생성합니다.
         각 스켈레톤 관절을 케이지 정점의 선형 결합으로 표현하는 가중치를 계산합니다.
+
+        NOTE: AVWeights matrix is not used, so it is removed in this conversion
         """
         print("\t find_weights_for_articulations")
-        num_nodes = skeleton.num_nodes
-        num_char_vertices = character.num_vertices
-        num_cage_vertices = cage.num_vertices
+        num_nodes = skeleton.num_nodes # N_SkelNode
+        num_char_vertices = character.num_vertices # N_CharV
+        num_cage_vertices = cage.num_vertices # N_CageV
 
-        mesh_vertices = character.rest_pose_vertices.reshape(-1, 3)
-        mesh_triangles = character.triangles.reshape(-1, 3)
-        cage_vertices = cage.rest_pose_vertices.reshape(-1, 3)
+        mesh_vertices = character.rest_pose_vertices.reshape(-1, 3) # (N_CharV, 3)
+        mesh_triangles = character.triangles.reshape(-1, 3) # (N_CharF, 3)
+        cage_vertices = cage.rest_pose_vertices.reshape(-1, 3) #(N_CageV, 3)
 
-        updater_weights = Weights(num_cage_vertices, num_nodes)
+        updater_weights = Weights(num_nodes, num_cage_vertices) # (N_SkelNode, N_CageV)
 
         s_exponent = 0.05  # 파인튜닝된 파라미터
         epsilon = 0.01
 
+        joint_positions = np.array([node.global_t_rest.translation for node in skeleton.nodes])
+
+        bone_char_mvc_weights = compute_mvc_weight_matrix( # (N_SkelNode, N_CharV)
+            src_vertices=joint_positions,
+            cage_vertices=mesh_vertices,
+            cage_triangles=mesh_triangles,
+        ) 
+
         # C++의 OMP 병렬 루프를 순차적으로 변환. 필요 시 joblib 등으로 병렬화 가능
         for j in range(num_nodes):
-            node_j = skeleton.get_node(j)
-            father = node_j.father
+            father = skeleton[j].father
             bones_adj = [father] if father != -1 else []
             bones_adj.append(j)
 
-            joint_j_pos = node_j.global_t_rest.translation
+            joint_j_pos = skeleton[j].global_t_rest.translation
 
             # 1. Joint j에 대한 MVC 계산 (vs. Character)
-            mvcoords = compute_mvc_coordinates_3d(
-                joint_j_pos, mesh_triangles, mesh_vertices
-            )
+            # mvcoords = compute_mvc_coordinates_3d(
+            #     joint_j_pos, mesh_triangles, mesh_vertices
+            # )
+            mvcoords = bone_char_mvc_weights[j] # (N_CharV, )
 
             # 2. Locality Factor를 적용하여 Weight Prior 계산
             weight_prior = np.zeros(num_char_vertices)
-            
-            # NumPy 최적화:
-            # skeleton_weights.weights는 (num_bones, num_vertices) 형태라고 가정
-            w_vb = skeleton_weights.weights[bones_adj, :] # (len(bones_adj), num_char_vertices)
-            locality_factor = np.power(np.maximum(epsilon, np.abs(w_vb)), s_exponent).sum(axis=0) - 1
+
+            # skeleton_weights.weights는 (N_Bone, N_CharV) 형태라고 가정
+            w_vb = skeleton_weights[bones_adj, :] # (len(bones_adj), N_CharV)
+            locality_factor = np.power(np.maximum(epsilon, np.abs(w_vb)), s_exponent).sum(axis=0) - 1 # (N_CharV, )
             locality_factor = np.maximum(locality_factor, epsilon)
-            
-            weight_prior = mvcoords * locality_factor
+
+            weight_prior = mvcoords * locality_factor # (N_CharV, ) = (N_CharV, ) * (N_CharV, ) 
 
             # 3. Weight Prior를 케이지에 투영
-            # joint_weights_invalid = (weight_prior @ cage_weights.weights.T)
-            # cage_weights.weights가 (num_cage_vertices, num_char_vertices) 형태라고 가정
-            joint_weights_invalid = weight_prior @ cage_weights.weights.T
+            joint_weights_invalid = weight_prior @ cage_weights.matrix # (N_CageV, ) = (N_CharV, ) * (N_CharV, N_CageV) 
 
             # 4. MEC(Maximum Entropy Coordinates) 계산
             try:
@@ -121,7 +133,7 @@ class SkeletonUpdater:
                 if mec_stats.linear_precision_error > 1e-6:
                     print("MEC has failed with the LBS derived prior. Re-computing without it.")
                     # mvcoords와 cage_weights를 사용한 대체 prior 계산
-                    joint_weights_invalid_fallback = mvcoords @ cage_weights.weights.T
+                    joint_weights_invalid_fallback = mvcoords @ cage_weights.T
                     joint_weights, mec_stats = compute_mec_coordinates(
                         joint_j_pos, cage_vertices, joint_weights_invalid_fallback,
                         max_iterations=100, line_search_steps=50, max_dw=0.001
@@ -131,7 +143,8 @@ class SkeletonUpdater:
                 print(f"MEC computation failed: {e}")
                 joint_weights = np.zeros(num_cage_vertices)
 
-            updater_weights.weights[:, j] = joint_weights
+            # breakpoint()
+            updater_weights[j, :] = joint_weights
 
         print("\t find_weights_for_articulations done")
         return updater_weights
