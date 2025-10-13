@@ -191,11 +191,7 @@ class Quaternion:
         else:
             return NotImplemented
 
-
-    # TODO : Move below functions to appropriate places
     def to_rotation_matrix(self) -> np.ndarray:
-        raise DeprecationWarning("Do not use rotation matrix. use operator")
-        pass 
         xx, yy, zz = self.x * self.x, self.y * self.y, self.z * self.z
         xy, xz, yz = self.x * self.y, self.x * self.z, self.y * self.z
         wx, wy, wz = self.w * self.x, self.w * self.y, self.w * self.z
