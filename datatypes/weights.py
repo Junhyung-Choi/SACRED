@@ -151,3 +151,7 @@ class Weights:
         # The C++ code builds this from triplets, which is equivalent to a Kronecker product
         # with the identity matrix.
         return kron(source_matrix, np.eye(3), format='csr')
+
+    @property
+    def T(self):
+        return self._matrix.T
