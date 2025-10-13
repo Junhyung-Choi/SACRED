@@ -89,7 +89,7 @@ class Weights:
     
     @property
     def shape(self) -> int:
-        return self._matrix.shape()
+        return self._matrix.shape
 
     @property
     def num_vertices(self) -> int:
