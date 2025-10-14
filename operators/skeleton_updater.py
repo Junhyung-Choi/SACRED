@@ -174,7 +174,7 @@ class SkeletonUpdater:
                 if mec_stats.linear_precision_error > 1e-6:
                     print("MEC has failed with the LBS derived prior. Re-computing without it.")
                     # mvcoords와 cage_weights를 사용한 대체 prior 계산
-                    joint_weights_invalid_fallback = mvcoords @ cage_weights.T
+                    joint_weights_invalid_fallback = mvcoords @ cage_weights.matrix
                     joint_weights, mec_stats = compute_mec_coordinates(
                         joint_j_pos, cage_vertices, joint_weights_invalid_fallback,
                         max_iterations=100, line_search_steps=50, max_dw=0.001
