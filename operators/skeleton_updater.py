@@ -160,8 +160,10 @@ class SkeletonUpdater:
         num_nodes = len(skeleton_nodes)
         
         # 1. 루트 모션 계산
+        # * NOTE: original codes looks like supporting multiple root_motion
+        # * However, it only uses last one, so we can also use last root_node_index
         root_motion = np.zeros(3)
-        root_node_idx = self.skeleton.get_root_node_index()
+        root_node_idx = self.skeleton.root_indexes[-1]
         if root_node_idx != -1:
             root_node = skeleton_nodes[root_node_idx]
             root_motion = root_node.local_t_current.translation - root_node.local_t_rest.translation
@@ -170,14 +172,15 @@ class SkeletonUpdater:
         # NumPy를 사용하여 모든 노드에 대해 한 번에 계산
         # self.skeleton_updater_weights.weights: (num_cage_vertices, num_nodes)
         # self.cage.rest_pose_vertices: (num_cage_vertices * 3)
-        W = self.skeleton_updater_weights.weights
-        C_rest = self.cage.rest_pose_vertices.reshape(-1, 3) # (num_cage_vertices, 3)
         
-        # pRest = W.T @ C_rest  (num_nodes, 3)
-        new_global_rest_positions = W.T @ C_rest
+        W = self.skeleton_updater_weights.matrix # (65, 24) # (N_Bone, N_CageV)
+        C_rest = self.cage.rest_pose_vertices.reshape(-1, 3) # (N_CageV, 3)
+
+        # pRest = W @ C_rest  (num_nodes, 3)
+        new_global_rest_positions = W @ C_rest #(N_Bone, 3)
 
         for j in range(num_nodes):
-            skeleton_nodes[j].global_t_rest.translation = new_global_rest_positions[j]
+            skeleton_nodes[j].global_t_rest.set_translation(new_global_rest_positions[j])
 
         # 3. 전역 Rest Pose로부터 지역 Rest Pose 업데이트
         self.skeleton.update_local_from_global_rest()
@@ -187,7 +190,7 @@ class SkeletonUpdater:
             t = skeleton_nodes[j].local_t_rest.translation
             if skeleton_nodes[j].father == -1:
                 t += root_motion
-            skeleton_nodes[j].local_t_current.translation = t
+            skeleton_nodes[j].local_t_current.set_translation(t)
 
         # 5. 지역 현재 포즈로부터 전역 현재 포즈 업데이트
         self.skeleton.update_global_from_local_current()
