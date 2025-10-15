@@ -51,11 +51,11 @@ class Character(Trimesh):
         self._rest_pose_vertices[v_id_ptr : v_id_ptr + 3] = new_position
 
     @property
-    def actual_pose_vertices(self):
+    def current_pose_vertices(self):
         return self.vertices
 
-    @actual_pose_vertices.setter
-    def actual_pose_vertices(self, vertices):
+    @current_pose_vertices.setter
+    def current_pose_vertices(self, vertices):
         self.vertices = vertices
 
     def get_actual_pose_vertex(self, v_id):

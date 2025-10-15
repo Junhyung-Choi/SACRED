@@ -78,7 +78,7 @@ class Skeleton:
     def _add_node(self, node_name: str, father: int, 
                  local_transformation: 'Transform', model_transformation: 'Transform') -> int:
         
-        node = SkeletonNode(node_name, father, local_transformation, model_transformation)
+        node = SkeletonNode(node_name, father, local_transformation, model_transformation) # identity, Node's Global Transform
         node_id = len(self._nodes)
         self._nodes.append(node)
 

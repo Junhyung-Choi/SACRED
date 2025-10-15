@@ -122,47 +122,6 @@ class SkeletonUpdater:
             joint_weights_invalid = weight_prior @ cage_weights.matrix # (N_CageV, ) = (N_CharV, ) * (N_CharV, N_CageV) 
 
             # 4. MEC(Maximum Entropy Coordinates) 계산
-            # --- DEBUG START ---
-            if j == 1: # 특정 관절 j=1에 대해서만 확인
-                print(f"--- 상세 디버깅: joint j={j} ---")
-
-                # 1. cage_weights.matrix 에서 음수 값 확인
-                # (캐릭터 정점이 케이지 밖에 있을 경우 음수가 될 수 있음)
-                neg_cage_weights_indices = np.where(cage_weights.matrix < 0)
-                if neg_cage_weights_indices[0].size > 0:
-                    print(f"\n[!] 'cage_weights.matrix'에서 음수 발견:")
-                    # (char_v_idx, cage_v_idx) 형태로 출력
-                    neg_indices = list(zip(neg_cage_weights_indices[0], neg_cage_weights_indices[1]))
-                    print(f"    음수 가중치 인덱스 (char_vertex, cage_vertex): {neg_indices[:5]}") # 처음 5개만 출력
-                    print(f"    총 {len(neg_indices)}개의 음수 가중치")
-
-                # 2. mvcoords 에서 음수 값 확인 (이론상으론 없어야 함)
-                neg_mvcoords_indices = np.where(mvcoords < 0)[0]
-                if neg_mvcoords_indices.size > 0:
-                    print(f"\n[!] 'mvcoords'에서 음수 발견:")
-                    print(f"    음수 인덱스: {neg_mvcoords_indices}")
-
-                # 3. locality_factor 에서 음수 값 확인 (epsilon으로 클램핑되므로 없어야 함)
-                neg_locality_indices = np.where(locality_factor < 0)[0]
-                if neg_locality_indices.size > 0:
-                    print(f"\n[!] 'locality_factor'에서 음수 발견:")
-                    print(f"    음수 인덱스: {neg_locality_indices}")
-
-                # 4. weight_prior 에서 음수 값 확인
-                neg_weight_prior_indices = np.where(weight_prior < 0)[0]
-                if neg_weight_prior_indices.size > 0:
-                    print(f"\n[!] 'weight_prior'에서 음수 발견:")
-                    print(f"    음수 인덱스: {neg_weight_prior_indices[:10]}") # 처음 10개만 출력
-
-                # 5. 최종 prior_masses (joint_weights_invalid) 확인
-                neg_prior_masses_indices = np.where(joint_weights_invalid < 0)[0]
-                if neg_prior_masses_indices.size > 0:
-                    print(f"\n[!] 최종 'prior_masses'에서 음수 발견:")
-                    print(f"    음수 인덱스: {neg_prior_masses_indices}")
-                    print(f"    음수 값들: {joint_weights_invalid[neg_prior_masses_indices]}")
-                
-                print("--- 상세 디버깅 끝 ---")
-            # --- DEBUG END ---
             try:
                 # C++ 원본의 파라미터(100, 50, 0.001)를 적용
                 joint_weights, mec_stats = compute_mec_coordinates(
@@ -242,10 +201,10 @@ class SkeletonUpdater:
         
         diff = after_update - before_update
         
-        print(f"스켈레톤 변경 사항:")
-        for i, d in enumerate(diff):
-            if np.sum(np.abs(d)) > 1e-3:
-                    print(f"  - 관절 {i} ({self.skeleton.nodes[i].name}): 위치 변경됨 {before_update[i]} -> {after_update[i]} (차이: {d})")
+        # print(f"스켈레톤 변경 사항:")
+        # for i, d in enumerate(diff):
+        #     if np.sum(np.abs(d)) > 1e-3:
+        #             print(f"  - 관절 {i} ({self.skeleton.nodes[i].name}): 위치 변경됨 {before_update[i]} -> {after_update[i]} (차이: {d})")
 
     def get_weights(self) -> Weights:
         return self.skeleton_updater_weights

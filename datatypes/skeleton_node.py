@@ -10,8 +10,8 @@ class SkeletonNode:
         self._local_t_current = local_t
         self._global_t_current = global_t
 
-        self._local_t_rest = local_t.copy()
-        self._global_t_rest = global_t.copy()
+        self._local_t_rest = local_t.copy()    # it should be identity
+        self._global_t_rest = global_t.copy()  # pre_quat + local_pos
 
         self._global_t = Transform()
 
