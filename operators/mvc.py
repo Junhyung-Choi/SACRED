@@ -89,7 +89,7 @@ def compute_mvc_coordinates_3d(
     return weights
 
 
-def compute_mvc_weight_matrix(src_vertices, cage_vertices, cage_triangles, eps=1e-8):
+def compute_mvc_weight_matrix(src_vertices, cage_vertices, cage_triangles, eps=1e-8, only_positive = False):
     """
     A corrected and more robust vectorized implementation of Mean Value Coordinates.
 
@@ -260,4 +260,10 @@ def compute_mvc_weight_matrix(src_vertices, cage_vertices, cage_triangles, eps=1
     # Place the calculated weights back into the final matrix
     weights_final[processing_mask] = W_vert_normalized
 
+    if only_positive:
+        weights_final[weights_final < 0] = 0
+        row_sums = weights_final.sum(axis=1, keepdims=True)
+        np.divide(weights_final, row_sums, out=weights_final, where=row_sums != 0)
+
     return weights_final # (V, Nc)
+
