@@ -114,15 +114,13 @@ class Skeleton:
             father_index = node.father
 
             if father_index != -1:
-                # * 부모가 있는 경우: L_rest = G_rest * G_father_rest^(-1) 로 Local Transform을 계산합니다.
-                # * 이는 Forward Kinematics (G_rest = G_father_rest * L_rest)의 역연산입니다.
                 rest_father_transformation = self.nodes[father_index].global_t_rest
-                node.local_t_rest = node.global_t_rest * rest_father_transformation.inverse()
+                node.local_t_rest = rest_father_transformation.inverse() * node.global_t_rest
             else:
-                # * 루트 노드인 경우: Local Transform은 Global Transform과 동일합니다.
                 node.local_t_rest = node.global_t_rest.copy()
             
             stack.extend(node.next) 
+
     
     def update_local_from_global_current(self):
         """
@@ -136,7 +134,7 @@ class Skeleton:
 
             if father_index != -1:
                 father_transformation = self.nodes[father_index].global_t_current
-                node.local_t_current = node.global_t_current * father_transformation.inverse()
+                node.local_t_current = father_transformation.inverse() * node.global_t_current
             else:
                 node.local_t_current = node.global_t_current.copy()
 
