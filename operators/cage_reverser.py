@@ -44,9 +44,14 @@ class CageReverser:
         skel: Skeleton,
         psi: Weights,
         phi: Weights,
-        omega: Weights,
+        omega: np.ndarray,
         selected_vertices: Union[List[int], None] = None
     ) -> bool:
+        """
+        # psi : skeleton_updater_weights
+        # phi : cage_weights
+        # omega : skeleton_weights
+        """
         self.character = character
         self.cage = cage
         self.skel = skel
@@ -56,17 +61,17 @@ class CageReverser:
         self.selected_vertices_for_inversion = selected_vertices
 
         # 1. 가중치 행렬로부터 Kronecker Product을 사용하여 희소 행렬 생성
-        self.PSI = self._identity_kronecker_product(self.psi.weights)
+        self.PSI = self._identity_kronecker_product(self.psi.matrix)
         
-        phi_weights = self.phi.weights
-        omega_weights = self.omega.weights
+        phi_weights = self.phi.matrix
+        omega_weights = self.omega
         if self.selected_vertices_for_inversion:
             phi_weights = phi_weights[:, self.selected_vertices_for_inversion]
             omega_weights = omega_weights[:, self.selected_vertices_for_inversion]
 
         self.PHI = self._identity_kronecker_product(phi_weights)
         self.PHI_transpose = self.PHI.transpose().tocsc()
-        self.OMEGA = self._identity_kronecker_product(omega_weights)
+        self.OMEGA = self._identity_kronecker_product(omega_weights).transpose()
 
         # 2. 시스템 구성에 필요한 행렬들 계산
         self.B_topo_inverse = self._compute_B_topo_inverse()
@@ -91,7 +96,7 @@ class CageReverser:
         B_topo = lil_matrix((dim, dim))
 
         for j in range(num_nodes):
-            node = self.skel.get_node(j)
+            node = self.skel[j]
             father = node.father
             
             if father == -1: # Root node
@@ -113,13 +118,13 @@ class CageReverser:
 
         rotations = {}
         for j in range(num_nodes):
-            node = self.skel.get_node(j)
+            node = self.skel[j]
             T_rest_inv = np.linalg.inv(node.global_t_rest.matrix)
             Rj = node.global_t_current.matrix @ T_rest_inv
             rotations[j] = Rj[:3, :3]
 
         for j in range(num_nodes):
-            father = self.skel.get_node(j).father
+            father = self.skel[j].father
             Rj = rotations[j]
 
             if father == -1: # Root node
@@ -147,7 +152,7 @@ class CageReverser:
         # 각 관절의 회전 행렬 미리 계산
         joint_rotations = []
         for j in range(num_nodes):
-            node = self.skel.get_node(j)
+            node = self.skel[j]
             T_rest_inv = np.linalg.inv(node.global_t_rest.matrix)
             Rj = (node.global_t_current.matrix @ T_rest_inv)[:3, :3]
             joint_rotations.append(Rj)
@@ -156,7 +161,7 @@ class CageReverser:
         for i_idx, i in enumerate(vert_indices):
             Ri = np.zeros((3, 3))
             for j in range(num_nodes):
-                w = self.omega.weights[j, i]
+                w = self.omega[j, i]
                 Ri += w * joint_rotations[j]
             
             R_lil[3*i_idx:3*i_idx+3, 3*i_idx:3*i_idx+3] = Ri
@@ -168,6 +173,7 @@ class CageReverser:
         # A = PHI.T * ((R * PHI) + (OMEGA * B_topo_inverse * Ar * PSI))
         print("\t Computation of A : ")
         term1 = self.R @ self.PHI
+        print(f"OMGEA: {self.OMEGA.shape}, B_topo_inverse: {self.B_topo_inverse.shape}, Ar: {self.Ar.shape}, PSI: {self.PSI.shape}")
         term2 = self.OMEGA @ self.B_topo_inverse @ self.Ar @ self.PSI
         self.A = self.PHI_transpose @ (term1 + term2)
         self.A = self.A.tocsc()
@@ -204,6 +210,7 @@ class CageReverser:
             dC_prime = self.cage.last_translations
 
         if np.linalg.norm(dC_prime) < 1e-9:
+            print("No cage editing has detected")
             return # 변위가 없으면 계산할 필요 없음
 
         # 2. 우변 b 계산
@@ -213,10 +220,10 @@ class CageReverser:
         # 3. 최소제곱법으로 dC 풀기
         # A * dC = b
         # lsqr은 (A, b)를 받아 x를 반환 (Ax=b)
-        print("\t Solving for dC...")
+        # print("\t Solving for dC...")
         result = lsqr(self.A, b)
         dC = result[0]
-        print("\t Solving for dC done.")
+        # print("\t Solving for dC done.")
 
         # 4. 계산된 변위 dC를 휴식 포즈에 적용
         old_rest_vertices = self.cage.rest_pose_vertices

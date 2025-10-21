@@ -46,7 +46,11 @@ class Cage:
         # NOTE: C++ 원본은 clear() 후 Trimesh 객체 자체를 재할당하지 않고 내부 데이터만 비웁니다.
 
     def on_current_pose_vertices_updated(self):
-        self._render_object._vao.set_vertex_position_batch(self.current_pose_vertices)
+        tmp = self.current_pose_vertices
+        # tmp = tmp.reshape(-1,3)
+        # tmp[:,2] *= -1.0 # Z축 뒤집기
+        # tmp = tmp.flatten()
+        self._render_object._vao.set_vertex_position_batch(tmp)
         pass
 
     # --- Accessors (C++ Getters/Setters) ---
@@ -72,6 +76,17 @@ class Cage:
         return self._current_pose.get_vertex(v_id)
 
     def set_current_pose_vertex(self, v_id: int, new_position: np.ndarray):
+        # 1. 정점이 실제로 업데이트되기 전의 '이전' 위치를 가져옵니다.
+        old_position = self._current_pose.get_vertex(v_id)
+        
+        # 2. 이 편집으로 인한 변위(delta)를 계산합니다.
+        delta = new_position - old_position
+        
+        # 3. 이 delta를 _last_translations 배열의 올바른 위치에 누적합니다.
+        #    (v_id*3)부터 3개의 요소(dx, dy, dz)에 덮어쓰는 것이 아니라 더합니다(+=).
+        self._last_translations[v_id * 3 : v_id * 3 + 3] += delta
+        
+        # 4. 이제 _current_pose의 정점 위치를 실제로 업데이트합니다.
         self._current_pose.set_vertex(v_id, new_position)
 
     # Rest Pose
@@ -112,6 +127,9 @@ class Cage:
     @property
     def last_translations(self) -> np.ndarray:
         return self._last_translations
+    @last_translations.setter
+    def last_translations(self, val):
+        self._last_translations = val
 
     def set_keyframe(self, keyframe: np.ndarray):
         """

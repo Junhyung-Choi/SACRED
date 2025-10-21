@@ -28,7 +28,7 @@ class SkeletonUpdater:
         self.original_node_positions: np.ndarray = np.array([], dtype=np.float64)
         self.clear()
 
-    def create(self, w_skeleton: Weights, w_cage: Weights, character: Character, skeleton: Skeleton, cage: Cage) -> bool:
+    def create(self, w_skeleton: np.ndarray, w_cage: Weights, character: Character, skeleton: Skeleton, cage: Cage) -> bool:
         """
         Param:
         - w_skeleton #(N_Bone, N_CharV)
@@ -64,7 +64,7 @@ class SkeletonUpdater:
 
     @staticmethod
     def generate_skeleton_updater_weights(
-        skeleton_weights: Weights, cage_weights: Weights, character: Character, skeleton: Skeleton, cage: Cage
+        skeleton_weights: np.ndarray, cage_weights: Weights, character: Character, skeleton: Skeleton, cage: Cage
     ) -> Weights:
         """
         스켈레톤-케이지 결합을 위한 가중치(Skeleton Updater Weights)를 생성합니다.
@@ -72,7 +72,6 @@ class SkeletonUpdater:
 
         NOTE: AVWeights matrix is not used, so it is removed in this conversion
         """
-        print("\t find_weights_for_articulations")
         num_nodes = skeleton.num_nodes # N_SkelNode
         num_char_vertices = character.num_vertices # N_CharV
         num_cage_vertices = cage.num_vertices # N_CageV
@@ -143,7 +142,6 @@ class SkeletonUpdater:
                 print(f"MEC computation failed: {e}")
                 joint_weights = np.zeros(num_cage_vertices)
 
-            # breakpoint()
             updater_weights[j, :] = joint_weights
 
         print("\t find_weights_for_articulations done")
