@@ -175,6 +175,8 @@ class SkeletonUpdater:
         
         W = self.skeleton_updater_weights.matrix # (65, 24) # (N_Bone, N_CageV)
         C_rest = self.cage.rest_pose_vertices.reshape(-1, 3) # (N_CageV, 3)
+        # Z_diff = self.cage.original_rest_pose_vertices.reshape(-1, 3) - C_rest #(N_CageV, 3)
+        # C_rest += Z_diff * 2  # 원본 C++ 코드의 Z축 뒤집기 보정
 
         # pRest = W @ C_rest  (num_nodes, 3)
         new_global_rest_positions = W @ C_rest #(N_Bone, 3)

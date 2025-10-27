@@ -1,33 +1,33 @@
 import numpy as np
 
 class Quaternion:
-    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, w: float = 1.0):
-        self._q = np.array([x,y,z,w], dtype=np.float64)
+    def __init__(self, w: float = 1.0, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        self._q = np.array([w,x,y,z], dtype=np.float64)
 
     def __repr__(self):
-        return f"Quaternion(x={self.x:.4f}, y={self.y:.4f}, z={self.z:.4f}, w={self.w:.4f})"
+        return f"Quaternion(w={self.w:.4f}, x={self.x:.4f}, y={self.y:.4f}, z={self.z:.4f})"
 
 
     # Property 
     @property
-    def x(self): return self._q[0]
-    @x.setter
-    def x(self, val): self._q[0] = val
-
-    @property
-    def y(self): return self._q[1]
-    @y.setter
-    def y(self, val): self._q[1] = val
-
-    @property
-    def z(self): return self._q[2]
-    @z.setter
-    def z(self, val): self._q[2] = val
-
-    @property
-    def w(self): return self._q[3]
+    def w(self): return self._q[0]
     @w.setter
-    def w(self, val): self._q[3] = val
+    def w(self, val): self._q[0] = val
+
+    @property
+    def x(self): return self._q[1]
+    @x.setter
+    def x(self, val): self._q[1] = val
+
+    @property
+    def y(self): return self._q[2]
+    @y.setter
+    def y(self, val): self._q[2] = val
+
+    @property
+    def z(self): return self._q[3]
+    @z.setter
+    def z(self, val): self._q[3] = val
 
     @property
     def v(self):
@@ -35,7 +35,7 @@ class Quaternion:
         Quaternion은 scalar + vector의 형태로 표기됩니다 (s,v)
         이때 vector 부분만을 추출해서 리턴하는 함수입니다
         """
-        return self._q[:3]
+        return self._q[1:]
 
 
     # Class Method    
@@ -53,7 +53,7 @@ class Quaternion:
     
     @classmethod
     def zero(cls):
-        return Quaternion(0,0,0,0)
+        return Quaternion(0.0, 0.0, 0.0, 0.0)
 
 
     # Instance Method
@@ -99,7 +99,7 @@ class Quaternion:
         return np.dot(self._q, other._q)
 
     def conjugate(self):
-        return Quaternion(-self.x, -self.y, -self.z, self.w)
+        return Quaternion(w=self.w, x=-self.x, y=-self.y, z=-self.z)
 
     def inverse(self):
         """inv_q = conjugate_q / length_sq"""
@@ -118,7 +118,7 @@ class Quaternion:
         Rotate vector by Quaternion
         q * v_q * q_conj
         """
-        v_q = Quaternion(*np.r_[v, [0.0]])
+        v_q = Quaternion(0.0, *v)
         
         result = self * v_q * self.conjugate()
         return result.v
@@ -174,7 +174,7 @@ class Quaternion:
             s_new = (s1 * s2) - np.dot(v1, v2)
             v_new = (s1 * v2) + (s2 * v1) + np.cross(v1, v2)
             
-            return Quaternion(v_new[0], v_new[1], v_new[2], s_new)
+            return Quaternion(s_new, v_new[0], v_new[1], v_new[2])
         
         elif isinstance(other, (int, float, np.floating)):
             # 쿼터니언 * 스칼라: NumPy 배열 연산으로 깔끔하게 처리
@@ -236,4 +236,3 @@ class Quaternion:
             z=(s0 * self.z) + (s1 * other.z),
             w=(s0 * self.w) + (s1 * other.w),
         )
-

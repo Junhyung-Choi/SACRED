@@ -50,7 +50,7 @@ class Transform:
         quat_xyzw = R.from_matrix(R_matrix).as_quat()
         
         # 직접 만든 Quaternion 객체로 변환하여 반환
-        return Quaternion(quat_xyzw[0], quat_xyzw[1], quat_xyzw[2], quat_xyzw[3])
+        return Quaternion(w=quat_xyzw[3], x=quat_xyzw[0], y=quat_xyzw[1], z=quat_xyzw[2])
 
     def set_to_zero(self):
         self.matrix = np.zeros((4, 4))
