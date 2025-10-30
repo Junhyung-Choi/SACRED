@@ -3,10 +3,41 @@ from typing import List
 from scipy.spatial.transform import Rotation as R
 from .quaternion import Quaternion
 
+"""
+3D 공간에서의 변환(이동 + 회전)을 나타내는 4x4 동차 변환 행렬(Homogeneous Transformation Matrix)
+클래스입니다.
+
+이 클래스는 내부적으로 4x4 `numpy.ndarray`를 사용하여 변환을 저장하고 연산합니다.
+`Quaternion` 클래스와 마찬가지로 **오른손 좌표계(Right-Handed Coordinate System)**를
+기준으로 합니다.
+
+주요 특징:
+- **다양한 초기화**: 오일러 각/이동 값, 쿼터니언, 4x4 행렬 리스트 등 다양한 방식으로
+  객체를 생성할 수 있습니다.
+- **변환 연산**: `__mul__` (행렬 곱)을 통해 변환을 누적(concatenate)할 수 있습니다.
+- **유틸리티**: `apply_to_point` (점에 변환 적용), `inverse` (역행렬) 등을 지원합니다.
+- **쿼터니언 연동**: `scipy`와 `Quaternion` 클래스를 연동하여 행렬의 회전 성분을
+  쿼터니언으로 추출(`get_rotation`)하거나 쿼터니언으로 설정(`set_rotation`)할 수 있습니다.
+- **보간 (Interpolation)**: `interpolate` 메서드를 통해 두 변환 사이를
+  부드럽게 보간합니다. (이동: Lerp, 회전: Slerp)
+
+오일러 각 (Euler Angles) 관련:
+- 이 클래스는 **Intrinsic ZYX** 회전 순서를 표준으로 사용합니다.
+- `__init__(rx, ry, rz)`: 오일러 각으로 초기화 시, 회전 순서는
+  **Z축 -> Y축 -> X축 (Intrinsic ZYX)** 순서 (`q_x * q_y * q_z`)로 적용됩니다.
+- `get_rotation().to_euler()`: 쿼터니언에서 오일러 각을 추출할 때도 동일하게
+  **ZYX** 순서 (`[Roll, Pitch, Yaw]`)로 값을 반환합니다.
+"""
 class Transform:
     def __init__(self, tx: float = 0.0, ty: float = 0.0, tz: float = 0.0, rx: float = 0.0, ry: float = 0.0, rz: float = 0.0, mat: List[float] = None, quat: Quaternion = None, col1: np.ndarray = None, col2: np.ndarray = None, col3: np.ndarray = None):
         if mat is not None:
             self.matrix = np.array(mat).reshape((4, 4))
+        elif (tx != 0.0 or ty != 0.0 or tz != 0.0) and quat is not None:
+            self.matrix = np.identity(4)
+            self.matrix[:3, :3] = quat.to_rotation_matrix()
+            self.matrix[0, 3] = tx
+            self.matrix[1, 3] = ty
+            self.matrix[2, 3] = tz
         elif quat is not None:
             self.matrix = np.identity(4)
             self.matrix[:3, :3] = quat.to_rotation_matrix()
@@ -27,7 +58,7 @@ class Transform:
                 q_z = Quaternion.from_axis_angle(np.array([0, 0, 1]), rz * grad_to_rad)
 
                 # Rotation Order : X -> Y -> Z
-                q_rotation = q_z * q_y * q_x 
+                q_rotation = q_x * q_y * q_z 
                 self.matrix[:3, :3] = q_rotation.to_rotation_matrix()
             
             # Add Translation
@@ -57,6 +88,9 @@ class Transform:
 
     def set_translation(self, t: np.ndarray):
         self.matrix[:3, 3] = t
+    
+    def set_rotation(self, q: Quaternion):
+        self.matrix[:3, :3] = q.to_rotation_matrix()
 
     def copy(self) -> 'Transform':
         return Transform(mat=self.matrix.copy().flatten().tolist())
