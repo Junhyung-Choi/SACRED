@@ -1,5 +1,28 @@
 import numpy as np
 
+"""
+3D 공간에서의 회전을 효율적으로 표현하고 연산하기 위한 쿼터니온(Quaternion) 클래스입니다.
+
+이 클래스는 표준적인 **오른손 좌표계(Right-Handed Coordinate System)**를 기준으로
+설계되었습니다. (예: `np.cross`를 사용하는 해밀턴 곱, `to_rotation_matrix`의 변환 공식)
+
+내부적으로 [w, x, y, z] 값을 NumPy 배열(`np.ndarray`)로 관리하여 벡터화된 연산의
+이점을 활용합니다. 쿼터니온은 3D 그래픽스, 로보틱스, 물리 시뮬레이션 등에서
+짐벌 락(Gimbal Lock) 문제를 피하면서 회전을 표현하는 데 널리 사용됩니다.
+
+주요 특징:
+- **생성**: 기본 초기화(단위 쿼터니온), 축-각(axis-angle)으로부터 생성 (`from_axis_angle`).
+- **기본 연산**: 덧셈 (`__add__`), 해밀턴 곱 (`__mul__`), 스칼라 곱 (`__mul__`, `__rmul__`).
+- **수학적 메서드**: `length`, `normalize`, `conjugate`, `inverse`, `dot` 등.
+- **회전 적용**: `apply_rotation` 메서드를 통해 3D 벡터를 회전 (q * v * q_conj).
+- **표현 변환**: 오일러 각 (`to_euler`), 3x3 회전 행렬 (`to_rotation_matrix`)로 변환.
+- **보간 (Interpolation)**: `slerp` (구면 선형 보간)를 지원하여 두 회전 사이의 부드러운 전환을 계산.
+
+오일러 각 (to_euler):
+- `to_euler()` 메서드는 **[Roll, Pitch, Yaw]** 순서의 NumPy 배열을 반환합니다.
+- 이는 물체(intrinsic)에 고정된 축을 기준으로 **Z축(Yaw) -> Y축(Pitch) -> X축(Roll)** 순서로
+  회전을 적용하는 것과 동일합니다 (Intrinsic ZYX Convention).
+"""
 class Quaternion:
     def __init__(self, w: float = 1.0, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         self._q = np.array([w,x,y,z], dtype=np.float64)
