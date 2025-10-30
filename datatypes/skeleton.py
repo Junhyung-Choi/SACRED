@@ -3,10 +3,13 @@ from typing import List, Union
 from .skeleton_node import SkeletonNode
 from .transform import Transform
 from .bbox import BoundingBox
+from .quaternion import Quaternion
 
 class Skeleton:
     def __init__(self, joints: List[np.ndarray] = None, joints_rotations: List[np.ndarray] = None, 
-                 fathers: List[int] = None, names: List[str] = None):
+                 fathers: List[int] = None, names: List[str] = None, joint_quats: List[Quaternion] = None):
+        # ! NOTE: joints, joints_rotations should be global.
+        
         self._root_indexes: List[int] = []
         self._nodes: List['SkeletonNode'] = []
         self.bounding_box: BoundingBox = BoundingBox()
@@ -14,6 +17,9 @@ class Skeleton:
 
         if joints is not None and joints_rotations is not None and fathers is not None and names is not None:
             self.create(joints, joints_rotations, fathers, names)
+        
+        if joints is not None and joint_quats is not None and fathers is not None and names is not None:
+            self.create_from_quats(joints, joint_quats, fathers, names)
 
     # * Properties 
     @property
@@ -61,6 +67,25 @@ class Skeleton:
             
             # C++의 Transform(rx, ry, rz, x, y, z)에 대응
             transform = Transform(tx=tx, ty=ty, tz=tz, rx=rx, ry=ry, rz=rz)
+
+            self._add_node(names[i], fathers[i], Transform(), transform)
+
+        self.update_local_from_global_rest()
+        self.update_local_from_global_current()
+
+        return True
+
+    def create_from_quats(self, joints: List[np.ndarray], joint_quats: List[Quaternion], 
+               fathers: List[int], names: List[str]) -> bool:
+        self.clear()
+
+        for i in range(len(joints)):
+            # joints_rotations[i]는 (rx, ry, rz), joints[i]는 (x, y, z)
+            tx, ty, tz = joints[i].tolist()
+            quat = joint_quats[i]
+            
+            # C++의 Transform(rx, ry, rz, x, y, z)에 대응
+            transform = Transform(tx=tx, ty=ty, tz=tz, quat=quat)
 
             self._add_node(names[i], fathers[i], Transform(), transform)
 
@@ -142,7 +167,7 @@ class Skeleton:
 
     def update_global_from_local_rest(self):
         """
-        Rest Pose의 Local Transform에서 Global Transform을 계산합니다.
+        Rest Pose의 Global Transform에서 Local Transform을 계산합니다.
         """
         stack = list(self.root_indexes)
         while stack:
@@ -160,7 +185,7 @@ class Skeleton:
 
     def update_global_from_local_current(self):
         """
-        Current Pose의 Global Transform에서 Local Transform을 계산합니다.
+        Current Pose의 Local Transform에서 Global Transform을 계산합니다.
         """
         stack = list(self.root_indexes)
         while stack:
@@ -183,6 +208,19 @@ class Skeleton:
         """
         for node in self.nodes:
             node.global_t_offset = node.global_t_current * node.global_t_rest.inverse()
+
+    def get_bone_transforms(self):
+        """
+        Computes the transformation matrix for each bone for skinning.
+        T_j = G_j_current * G_j_rest^-1
+        Returns a tensor of shape (num_bones, 4, 4).
+        """
+        import torch
+        transforms = []
+        for node in self.nodes:
+            # node.global_t_offset is G_current * G_rest_inv
+            transforms.append(node.global_t_offset.matrix)
+        return torch.from_numpy(np.array(transforms, dtype=np.float32))
 
     # --- Animation/Keyframe Methods ---
 
