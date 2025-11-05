@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from typing import List, Union
 
@@ -88,3 +89,29 @@ class CageUpdater:
         # new_cage_x, new_cage_y, new_cage_z를 개별적으로 계산할 필요 없음
         # 5. 케이지의 현재 포즈 업데이트
         self.cage.current_pose_vertices = C_prime.flatten()
+
+
+    def update_position_torch(self, char_verts):
+        """
+        update_position()'s torch version.
+        변형된 캐릭터 정점 위치를 기반으로 케이지 정점의 새 위치를 계산합니다.
+        선형 시스템 W_cage * C' = V'를 최소제곱법으로 풀어 C'를 구합니다.
+        
+        assume that self.character and self.cage are pytorch3d.structures.Meshes 
+        and self.w_cage.matrix is a torch.Tensor.
+        """
+        if self.character is None or self.cage is None or self.w_cage is None:
+            return
+
+        W = self.w_cage
+        V_prime = char_verts.clone().detach() # (num_source_vertices, 3)
+
+        # torch.linalg.lstsq(A, B) -> solution, residuals, rank, singular_values
+        # rcond=None (default)은 PyTorch 2.1 이후 권장되는 설정입니다.
+        # solution 텐서만 필요하므로 튜플 언패킹
+        C_prime, _, _, _ = torch.linalg.lstsq(W, V_prime)
+        C_prime_padded = C_prime.unsqueeze(0) # (1, num_cage_vertices, 3)
+
+        # 4. 케이지의 현재 포즈 업데이트
+        self.cage = self.cage.update_padded(new_verts_padded=C_prime_padded)
+        return self.cage
