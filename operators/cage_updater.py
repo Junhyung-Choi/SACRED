@@ -112,6 +112,38 @@ class CageUpdater:
         C_prime, _, _, _ = torch.linalg.lstsq(W, V_prime)
         C_prime_padded = C_prime.unsqueeze(0) # (1, num_cage_vertices, 3)
 
+        return C_prime
+
         # 4. 케이지의 현재 포즈 업데이트
         self.cage = self.cage.update_padded(new_verts_padded=C_prime_padded)
         return self.cage
+
+def update_position_torch_regularized(w_cage, char_verts, L, C_orig, lambda_reg=1e-3):
+    """
+    w_cage: (num_source, num_cage)
+    char_verts: (num_source, 3)
+    L: Laplacian matrix (num_cage, num_cage)
+    C_orig: Original cage vertices (num_cage, 3)
+    lambda_reg: 정규화 강도 (클수록 더 매끄러워지고 작을수록 정확도에 집중)
+    """
+    W = w_cage
+    V_prime = char_verts.clone().detach()
+    
+    # 1. 원래 케이지의 곡률(Differential Coordinates) 계산
+    # 이 값을 타겟으로 삼아야 '납작해지는 현상'을 막을 수 있습니다.
+    delta_orig = torch.mm(L, C_orig) # (num_cage, 3)
+    
+    # 2. 행렬 스태킹 (Stacking)
+    # 루트(lambda)를 씌우는 이유는 lstsq가 '제곱 오차'를 최소화하기 때문입니다.
+    weight = torch.sqrt(torch.tensor(lambda_reg))
+    
+    # W 행렬 아래에 lambda가 곱해진 L을 붙임
+    W_stacked = torch.cat([W, weight * L], dim=0) # (num_source + num_cage, num_cage)
+    
+    # V_prime 아래에 lambda가 곱해진 delta_orig를 붙임
+    V_stacked = torch.cat([V_prime, weight * delta_orig], dim=0) # (num_source + num_cage, 3)
+
+    # 3. 확장된 시스템을 한 번에 풀기
+    C_prime, _, _, _ = torch.linalg.lstsq(W_stacked, V_stacked)
+    
+    return C_prime.unsqueeze(0)
