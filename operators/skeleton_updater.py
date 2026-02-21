@@ -119,6 +119,15 @@ class SkeletonUpdater:
 
             # 3. Weight Prior를 케이지에 투영
             joint_weights_invalid = weight_prior @ cage_weights.matrix # (N_CageV, ) = (N_CharV, ) * (N_CharV, N_CageV) 
+            
+            # [DIAGNOSTIC] Log for the first joint to see what's happening
+            if j == 0:
+                print(f"--- Diagnostic [Joint {j}] ---")
+                print(f"  mvcoords range: {mvcoords.min():.2e} ~ {mvcoords.max():.2e} (Sum: {mvcoords.sum():.2f})")
+                print(f"  locality_factor range: {locality_factor.min():.2e} ~ {locality_factor.max():.2e}")
+                print(f"  prior (joint_weights_invalid) range: {joint_weights_invalid.min():.2e} ~ {joint_weights_invalid.max():.2e}")
+                if np.any(joint_weights_invalid < 0):
+                    print(f"  ⚠️ Warning: Prior has negative values! (Count: {np.sum(joint_weights_invalid < 0)})")
 
             # 4. MEC(Maximum Entropy Coordinates) 계산
             try:
