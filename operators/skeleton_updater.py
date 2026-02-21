@@ -68,94 +68,100 @@ class SkeletonUpdater:
     def generate_skeleton_updater_weights(
         skeleton_weights: np.ndarray, cage_weights: torch.Tensor, character: Character, skeleton: Skeleton, cage: Cage
     ) -> Weights:
-        """
-        스켈레톤-케이지 결합을 위한 가중치(Skeleton Updater Weights)를 생성합니다.
-        각 스켈레톤 관절을 케이지 정점의 선형 결합으로 표현하는 가중치를 계산합니다.
+        num_nodes = skeleton.num_nodes
+        num_char_vertices = character.num_vertices
+        num_cage_vertices = cage.num_vertices
 
-        NOTE: AVWeights matrix is not used, so it is removed in this conversion
-        """
-        num_nodes = skeleton.num_nodes # N_SkelNode
-        num_char_vertices = character.num_vertices # N_CharV
-        num_cage_vertices = cage.num_vertices # N_CageV
+        mesh_vertices = character.rest_pose_vertices.reshape(-1, 3)
+        mesh_triangles = character.triangles.reshape(-1, 3)
+        cage_vertices = cage.rest_pose_vertices.reshape(-1, 3)
 
-        mesh_vertices = character.rest_pose_vertices.reshape(-1, 3) # (N_CharV, 3)
-        mesh_triangles = character.triangles.reshape(-1, 3) # (N_CharF, 3)
-        cage_vertices = cage.rest_pose_vertices.reshape(-1, 3) #(N_CageV, 3)
+        updater_weights = Weights(num_nodes, num_cage_vertices)
 
-        updater_weights = Weights(num_nodes, num_cage_vertices) # (N_SkelNode, N_CageV)
-
-        s_exponent = 0.05  # 파인튜닝된 파라미터
-        epsilon = 0.01
-
+        # 1. 모든 관절의 MVC 가중치를 미리 계산 (캐릭터 메시 기준)
         joint_positions = np.array([node.global_t_rest.translation for node in skeleton.nodes])
-
-        bone_char_mvc_weights = compute_mvc_weight_matrix( # (N_SkelNode, N_CharV)
+        bone_char_mvc_weights = compute_mvc_weight_matrix(
             src_vertices=joint_positions,
             cage_vertices=mesh_vertices,
             cage_triangles=mesh_triangles,
         ) 
+        
+        fallback_count = 0
 
-        # C++의 OMP 병렬 루프를 순차적으로 변환. 필요 시 joblib 등으로 병렬화 가능
         for j in range(num_nodes):
+            joint_j_pos = skeleton[j].global_t_rest.translation
             father = skeleton[j].father
             bones_adj = [father] if father != -1 else []
             bones_adj.append(j)
 
-            joint_j_pos = skeleton[j].global_t_rest.translation
-
-            # 1. Joint j에 대한 MVC 계산 (vs. Character)
-            # mvcoords = compute_mvc_coordinates_3d(
-            #     joint_j_pos, mesh_triangles, mesh_vertices
-            # )
-            mvcoords = bone_char_mvc_weights[j] # (N_CharV, )
-
-            # 2. Locality Factor를 적용하여 Weight Prior 계산
-            weight_prior = np.zeros(num_char_vertices)
-
-            # skeleton_weights.weights는 (N_Bone, N_CharV) 형태라고 가정
-            w_vb = skeleton_weights[bones_adj, :] # (len(bones_adj), N_CharV)
-            locality_factor = np.power(np.maximum(epsilon, np.abs(w_vb)), s_exponent).sum(axis=0) - 1 # (N_CharV, )
-            locality_factor = np.maximum(locality_factor, epsilon)
-
-            weight_prior = mvcoords * locality_factor # (N_CharV, ) = (N_CharV, ) * (N_CharV, ) 
-
-            # 3. Weight Prior를 케이지에 투영
-            joint_weights_invalid = weight_prior @ cage_weights.numpy() # (N_CageV, ) = (N_CharV, ) * (N_CharV, N_CageV) 
-            
-            # [DIAGNOSTIC] Log for the first joint to see what's happening
+            # [DEBUG] 첫 번째 관절 혹은 특정 주기마다 유닛/위치 검증
             if j == 0:
-                print(f"--- Diagnostic [Joint {j}] ---")
-                print(f"  mvcoords range: {mvcoords.min():.2e} ~ {mvcoords.max():.2e} (Sum: {mvcoords.sum():.2f})")
-                print(f"  locality_factor range: {locality_factor.min():.2e} ~ {locality_factor.max():.2e}")
-                print(f"  prior (joint_weights_invalid) range: {joint_weights_invalid.min():.2e} ~ {joint_weights_invalid.max():.2e}")
-                if np.any(joint_weights_invalid < 0):
-                    print(f"  ⚠️ Warning: Prior has negative values! (Count: {np.sum(joint_weights_invalid < 0)})")
+                print(f"\n--- [Unit/Position Check for Joint {j}] ---")
+                print(f"  Joint Pos: {joint_j_pos}")
+                cage_min, cage_max = cage_vertices.min(axis=0), cage_vertices.max(axis=0)
+                print(f"  Cage BBox: {cage_min} ~ {cage_max}")
+                is_inside = np.all((joint_j_pos >= cage_min) & (joint_j_pos <= cage_max))
+                print(f"  Is Joint inside Cage BBox?: {is_inside}")
+                min_dist = np.min(np.linalg.norm(cage_vertices - joint_j_pos, axis=1))
+                print(f"  Distance to nearest cage vertex: {min_dist:.4f}m")
 
-            # 4. MEC(Maximum Entropy Coordinates) 계산
+            # 1. MVC 좌표 가져오기 (Mesh 공간)
+            mvcoords = bone_char_mvc_weights[j]
+
+            # 2. 순수 기하학적 투영 (Fallback에서 100% 성공하는 안전한 Base Prior)
+            pure_prior = mvcoords @ cage_weights.numpy()
+            pure_prior = np.maximum(pure_prior, 0.0)
+
+            # 3. LBS Locality를 Mesh에서 Cage 공간으로 변환
+            w_vb = skeleton_weights[bones_adj, :] 
+            mesh_locality = np.sum(w_vb, axis=0) 
+            
+            # [핵심] LBS 가중치 자체를 케이지의 영향력으로 투영합니다
+            cage_locality = mesh_locality @ cage_weights.numpy() 
+            
+            # Cage Locality 정규화 (가장 영향력이 큰 케이지 정점이 1.0이 되도록)
+            if cage_locality.max() > 0:
+                cage_locality /= cage_locality.max()
+
+            # 4. Cage 레벨에서 Soft Blending
+            base_ratio = 0.2 # 기하학적 구조 유지를 위한 최소 비율 (20%)
+            soft_locality = base_ratio + (1.0 - base_ratio) * cage_locality
+            
+            # 최종 Prior 계산 (안전한 Base에 조절된 Locality 곱하기)
+            joint_weights_invalid = pure_prior * soft_locality
+
+            # [STABILIZATION] 최소값 보장 및 정규화
+            joint_weights_invalid = np.maximum(joint_weights_invalid, 1e-6)
+            prior_sum = joint_weights_invalid.sum()
+            if prior_sum > 0:
+                joint_weights_invalid /= prior_sum
+            
+            # 5. MEC 계산
             try:
-                # C++ 원본의 파라미터(100, 50, 0.001)를 적용
                 joint_weights, mec_stats = compute_mec_coordinates(
                     joint_j_pos, cage_vertices, joint_weights_invalid,
                     max_iterations=100, line_search_steps=50, max_dw=0.001
                 )
 
-                # MEC 실패 시 예외 처리 (AWFUL safe guard)
-                if mec_stats.linear_precision_error > 1e-6:
-                    print("MEC has failed with the LBS derived prior. Re-computing without it.")
-                    # mvcoords와 cage_weights를 사용한 대체 prior 계산
-                    joint_weights_invalid_fallback = mvcoords @ cage_weights.numpy()
-                    joint_weights, mec_stats = compute_mec_coordinates(
-                        joint_j_pos, cage_vertices, joint_weights_invalid_fallback,
+                # 정밀도가 낮을 경우(수렴 실패)의 Safe Guard
+                if mec_stats.linear_precision_error > 1e-5:
+                    print(f"  ⚠️ Joint {j}: MEC failed with Prior. Retrying with Mesh-to-Cage Fallback...")
+                    fallback_count += 1
+                    fallback_prior = np.maximum(mvcoords @ cage_weights.numpy(), 1e-6)
+                    fallback_prior /= fallback_prior.sum()
+                    
+                    joint_weights, _ = compute_mec_coordinates(
+                        joint_j_pos, cage_vertices, fallback_prior,
                         max_iterations=100, line_search_steps=50, max_dw=0.001
                     )
 
             except Exception as e:
-                print(f"MEC computation failed: {e}")
+                print(f"  ❌ Joint {j} MEC Error: {e}")
                 joint_weights = np.zeros(num_cage_vertices)
 
             updater_weights[j, :] = joint_weights
 
-        print("\t find_weights_for_articulations done")
+        print(f"\n\t find_weights_for_articulations done (fallback_count={fallback_count})")
         return updater_weights
 
     def update_position(self):
