@@ -7,6 +7,8 @@ from ..datatypes.cage import Cage
 from .mvc import compute_mvc_coordinates_3d, compute_mvc_weight_matrix
 from .mec import compute_mec_coordinates
 
+import torch
+
 class SkeletonUpdater:
     """
     Skeleton Updater (C -> S)
@@ -64,7 +66,7 @@ class SkeletonUpdater:
 
     @staticmethod
     def generate_skeleton_updater_weights(
-        skeleton_weights: np.ndarray, cage_weights: Weights, character: Character, skeleton: Skeleton, cage: Cage
+        skeleton_weights: np.ndarray, cage_weights: torch.Tensor, character: Character, skeleton: Skeleton, cage: Cage
     ) -> Weights:
         """
         스켈레톤-케이지 결합을 위한 가중치(Skeleton Updater Weights)를 생성합니다.
@@ -118,7 +120,7 @@ class SkeletonUpdater:
             weight_prior = mvcoords * locality_factor # (N_CharV, ) = (N_CharV, ) * (N_CharV, ) 
 
             # 3. Weight Prior를 케이지에 투영
-            joint_weights_invalid = weight_prior @ cage_weights.matrix # (N_CageV, ) = (N_CharV, ) * (N_CharV, N_CageV) 
+            joint_weights_invalid = weight_prior @ cage_weights.numpy() # (N_CageV, ) = (N_CharV, ) * (N_CharV, N_CageV) 
             
             # [DIAGNOSTIC] Log for the first joint to see what's happening
             if j == 0:
@@ -141,7 +143,7 @@ class SkeletonUpdater:
                 if mec_stats.linear_precision_error > 1e-6:
                     print("MEC has failed with the LBS derived prior. Re-computing without it.")
                     # mvcoords와 cage_weights를 사용한 대체 prior 계산
-                    joint_weights_invalid_fallback = mvcoords @ cage_weights.matrix
+                    joint_weights_invalid_fallback = mvcoords @ cage_weights.numpy()
                     joint_weights, mec_stats = compute_mec_coordinates(
                         joint_j_pos, cage_vertices, joint_weights_invalid_fallback,
                         max_iterations=100, line_search_steps=50, max_dw=0.001

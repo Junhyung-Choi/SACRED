@@ -45,8 +45,8 @@ class Trimesh:
     def create(self, _vertices: np.ndarray, _tris: np.ndarray) -> bool:
         self.clear()
         
-        self._vertices = _vertices
-        self._tris = _tris
+        self._vertices = np.ascontiguousarray(_vertices).flatten()
+        self._tris = np.ascontiguousarray(_tris).flatten()
         
         self._init()
         
